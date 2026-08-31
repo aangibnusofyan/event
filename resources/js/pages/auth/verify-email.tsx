@@ -13,24 +13,24 @@ export default function VerifyEmail({ status }: { status?: string }) {
 
             {status === 'verification-link-sent' && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
+                    Link verifikasi baru telah dikirim ke alamat email yang
+                    Anda daftarkan.
                 </div>
             )}
 
             <Form {...send.form()} className="space-y-6 text-center">
                 {({ processing }) => (
                     <>
-                        <Button disabled={processing} variant="secondary">
+                        <Button disabled={processing} className="bg-[#C1502E] text-white shadow-lg shadow-[#C1502E]/20 hover:bg-[#C1502E]/90">
                             {processing && <Spinner />}
-                            Resend verification email
+                            Kirim Ulang Email Verifikasi
                         </Button>
 
                         <TextLink
                             href={logout()}
                             className="mx-auto block text-sm"
                         >
-                            Log out
+                            Keluar
                         </TextLink>
                     </>
                 )}
@@ -40,7 +40,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
 }
 
 VerifyEmail.layout = {
-    title: 'Email verification',
+    title: 'Verifikasi Email',
     description:
-        'Please verify your email address by clicking on the link we just emailed to you.',
+        'Silakan verifikasi alamat email Anda dengan mengklik link yang telah kami kirim.',
 };

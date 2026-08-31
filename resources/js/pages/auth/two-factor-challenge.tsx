@@ -23,18 +23,18 @@ export default function TwoFactorChallenge() {
     }>(() => {
         if (showRecoveryInput) {
             return {
-                title: 'Recovery code',
+                title: 'Kode Pemulihan',
                 description:
-                    'Please confirm access to your account by entering one of your emergency recovery codes.',
-                toggleText: 'login using an authentication code',
+                    'Silakan konfirmasi akses ke akun Anda dengan memasukkan salah satu kode pemulihan darurat.',
+                toggleText: 'masuk menggunakan kode autentikasi',
             };
         }
 
         return {
-            title: 'Authentication code',
+            title: 'Kode Autentikasi',
             description:
-                'Enter the authentication code provided by your authenticator application.',
-            toggleText: 'login using a recovery code',
+                'Masukkan kode autentikasi dari aplikasi authenticator Anda.',
+            toggleText: 'masuk menggunakan kode pemulihan',
         };
     }, [showRecoveryInput]);
 
@@ -106,14 +106,14 @@ export default function TwoFactorChallenge() {
 
                             <Button
                                 type="submit"
-                                className="w-full"
+                                className="w-full bg-[#C1502E] text-white shadow-lg shadow-[#C1502E]/20 hover:bg-[#C1502E]/90"
                                 disabled={processing}
                             >
-                                Continue
+                                Lanjutkan
                             </Button>
 
                             <div className="text-muted-foreground text-center text-sm">
-                                <span>or you can </span>
+                                <span>atau Anda dapat </span>
                                 <button
                                     type="button"
                                     className="text-foreground cursor-pointer underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
