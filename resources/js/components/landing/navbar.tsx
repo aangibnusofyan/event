@@ -17,7 +17,7 @@ const navItems = [
     { label: 'Harga', href: '#harga' },
 ];
 
-export function Navbar() {
+export function Navbar({ hideNavItems = false }: { hideNavItems?: boolean } = {}) {
     const { auth } = usePage<{
         auth: { user: { name: string } | null };
     }>().props;
@@ -58,7 +58,7 @@ export function Navbar() {
 
                 {/* Desktop Menu */}
                 <div className="hidden items-center gap-8 lg:flex">
-                    {navItems.map((item) => (
+                    {!hideNavItems && navItems.map((item) => (
                         <a
                             key={item.href}
                             href={item.href}
@@ -78,7 +78,7 @@ export function Navbar() {
                 <div className="hidden items-center gap-3 lg:flex">
                     {auth.user ? (
                         <Button asChild>
-                            <Link href={dashboard()}>Dashboard</Link>
+                            <Link href={dashboard().url()}>Dashboard</Link>
                         </Button>
                     ) : (
                         <>
@@ -90,13 +90,13 @@ export function Navbar() {
                                         'border-white/30 text-white hover:bg-white/10 hover:text-white',
                                 )}
                             >
-                                <Link href={login()}>Masuk</Link>
+                                <Link href={login().url()}>Masuk</Link>
                             </Button>
                             <Button
                                 asChild
                                 className="bg-[#C1502E] text-white hover:bg-[#C1502E]/90"
                             >
-                                <Link href={register()}>Daftar Sekarang</Link>
+                                <Link href={register().url()}>Daftar Sekarang</Link>
                             </Button>
                         </>
                     )}
@@ -120,7 +120,7 @@ export function Navbar() {
                             Menu Navigasi
                         </SheetTitle>
                         <div className="flex flex-col gap-6 pt-8">
-                            {navItems.map((item) => (
+                            {!hideNavItems && navItems.map((item) => (
                                 <a
                                     key={item.href}
                                     href={item.href}
@@ -133,20 +133,20 @@ export function Navbar() {
                             <div className="mt-4 flex flex-col gap-3">
                                 {auth.user ? (
                                     <Button asChild>
-                                        <Link href={dashboard()}>
+                                        <Link href={dashboard().url()}>
                                             Dashboard
                                         </Link>
                                     </Button>
                                 ) : (
                                     <>
                                         <Button asChild variant="outline">
-                                            <Link href={login()}>Masuk</Link>
+                                            <Link href={login().url()}>Masuk</Link>
                                         </Button>
                                         <Button
                                             asChild
                                             className="bg-[#C1502E] text-white hover:bg-[#C1502E]/90"
                                         >
-                                            <Link href={register()}>
+                                            <Link href={register().url()}>
                                                 Daftar Sekarang
                                             </Link>
                                         </Button>
