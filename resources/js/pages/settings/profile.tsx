@@ -1,5 +1,6 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
@@ -7,6 +8,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { edit } from '@/routes/profile';
 import type { Auth } from '@/types';
 import { send } from '@/routes/verification';
@@ -23,6 +25,7 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage<PageProps>().props;
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
     return (
         <>
@@ -62,6 +65,71 @@ export default function Profile({
                                 <InputError
                                     className="mt-2"
                                     message={errors.name}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="username">Username</Label>
+
+                                <Input
+                                    id="username"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.username}
+                                    name="username"
+                                    required
+                                    autoComplete="username"
+                                    placeholder="Username"
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.username}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="about">About</Label>
+
+                                <Textarea
+                                    id="about"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.about ?? ''}
+                                    name="about"
+                                    placeholder="Ceritakan tentang diri Anda..."
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.about}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="avatar">Profile Photo</Label>
+
+                                {(avatarPreview || auth.user.avatar) && (
+                                    <div className="mb-2">
+                                        <img src={avatarPreview || `/storage/${auth.user.avatar}`} alt="Avatar" className="w-16 h-16 rounded-full object-cover" />
+                                    </div>
+                                )}
+
+                                <Input
+                                    id="avatar"
+                                    type="file"
+                                    className="mt-1 block w-full"
+                                    name="avatar"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setAvatarPreview(URL.createObjectURL(file));
+                                        }
+                                    }}
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.avatar}
                                 />
                             </div>
 

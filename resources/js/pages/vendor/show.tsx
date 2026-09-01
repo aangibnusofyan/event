@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useScrollAnimation } from '@/hooks/use-scroll-animation';
 import {
@@ -132,6 +132,7 @@ function HeroSection({ vendor }: { vendor: VendorData }) {
                 <div className="flex flex-col items-center text-center lg:flex-row lg:items-end lg:gap-8 lg:text-left">
                     {/* Avatar */}
                     <Avatar className="ring-background/20 size-28 ring-4 lg:size-36">
+                        {vendor.avatar && <AvatarImage src={vendor.avatar} alt={vendor.name} className="object-cover" />}
                         <AvatarFallback className="bg-[#C1502E] font-serif text-3xl font-bold text-white lg:text-4xl">
                             {initials}
                         </AvatarFallback>
@@ -541,7 +542,7 @@ function CTASection({ vendor }: { vendor: VendorData }) {
                         className="border-white/25 px-10 text-base text-white hover:bg-white/10 hover:text-white"
                         asChild
                     >
-                        <Link href={home().url()}>Kembali ke Beranda</Link>
+                        <Link href={home().url}>Kembali ke Beranda</Link>
                     </Button>
                 </div>
             </div>

@@ -18,8 +18,8 @@ class VendorProfileController extends Controller
             'vendor' => [
                 'name' => $user->name,
                 'username' => $user->username,
-                'avatar' => $user->avatar ?? null,
-                'bio' => 'Event organizer profesional yang berpengalaman dalam menyelenggarakan berbagai jenis acara mulai dari konser musik, seminar, workshop, hingga festival budaya. Kami berkomitmen menghadirkan pengalaman event terbaik untuk setiap peserta.',
+                'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
+                'bio' => $user->about ?? 'Belum ada informasi tentang vendor ini.',
                 'location' => 'Jakarta, Indonesia',
                 'joinedAt' => $user->created_at->translatedFormat('F Y'),
                 'stats' => [

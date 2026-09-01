@@ -78,7 +78,7 @@ export function Navbar({ hideNavItems = false }: { hideNavItems?: boolean } = {}
                 <div className="hidden items-center gap-3 lg:flex">
                     {auth.user ? (
                         <Button asChild>
-                            <Link href={dashboard().url()}>Dashboard</Link>
+                            <Link href={dashboard().url}>Dashboard</Link>
                         </Button>
                     ) : (
                         <>
@@ -90,13 +90,13 @@ export function Navbar({ hideNavItems = false }: { hideNavItems?: boolean } = {}
                                         'border-white/30 text-white hover:bg-white/10 hover:text-white',
                                 )}
                             >
-                                <Link href={login().url()}>Masuk</Link>
+                                <Link href={login().url}>Masuk</Link>
                             </Button>
                             <Button
                                 asChild
                                 className="bg-[#C1502E] text-white hover:bg-[#C1502E]/90"
                             >
-                                <Link href={register().url()}>Daftar Sekarang</Link>
+                                <Link href={register().url}>Daftar Sekarang</Link>
                             </Button>
                         </>
                     )}
@@ -133,20 +133,20 @@ export function Navbar({ hideNavItems = false }: { hideNavItems?: boolean } = {}
                             <div className="mt-4 flex flex-col gap-3">
                                 {auth.user ? (
                                     <Button asChild>
-                                        <Link href={dashboard().url()}>
+                                        <Link href={dashboard().url}>
                                             Dashboard
                                         </Link>
                                     </Button>
                                 ) : (
                                     <>
                                         <Button asChild variant="outline">
-                                            <Link href={login().url()}>Masuk</Link>
+                                            <Link href={login().url}>Masuk</Link>
                                         </Button>
                                         <Button
                                             asChild
                                             className="bg-[#C1502E] text-white hover:bg-[#C1502E]/90"
                                         >
-                                            <Link href={register().url()}>
+                                            <Link href={register().url}>
                                                 Daftar Sekarang
                                             </Link>
                                         </Button>
