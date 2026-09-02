@@ -18,9 +18,48 @@ import {
     MessageCircle,
     Star,
     Ticket,
-    Twitter,
+    Youtube,
     Users,
 } from 'lucide-react';
+
+function XIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 4l11.733 16h4.267l-11.733 -16z" />
+            <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
+        </svg>
+    );
+}
+
+function TiktokIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 12a4 4 0 1 0 4 4v-12a5 5 0 0 0 5 5" />
+        </svg>
+    );
+}
 
 interface VendorEvent {
     id: number;
@@ -47,9 +86,11 @@ interface VendorData {
         rating: number;
     };
     socialLinks: {
-        instagram: string;
-        twitter: string;
-        website: string;
+        instagram?: string;
+        x?: string;
+        tiktok?: string;
+        youtube?: string;
+        website?: string;
     };
 }
 
@@ -304,34 +345,71 @@ function BioSection({ vendor }: { vendor: VendorData }) {
                     <div>
                         <Card className="border-border/50">
                             <CardContent className="space-y-4 p-6">
-                                <h3 className="text-foreground text-sm font-semibold uppercase tracking-wider">
-                                    Media Sosial
-                                </h3>
-                                <div className="flex gap-3">
-                                    <a
-                                        href={vendor.socialLinks.instagram}
-                                        className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
-                                        aria-label="Instagram"
-                                    >
-                                        <Instagram className="size-4" />
-                                    </a>
-                                    <a
-                                        href={vendor.socialLinks.twitter}
-                                        className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
-                                        aria-label="Twitter"
-                                    >
-                                        <Twitter className="size-4" />
-                                    </a>
-                                    <a
-                                        href={vendor.socialLinks.website}
-                                        className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
-                                        aria-label="Website"
-                                    >
-                                        <Globe className="size-4" />
-                                    </a>
-                                </div>
-
-                                <Separator />
+                                {(vendor.socialLinks?.instagram || vendor.socialLinks?.x || vendor.socialLinks?.tiktok || vendor.socialLinks?.youtube || vendor.socialLinks?.website) && (
+                                    <>
+                                        <h3 className="text-foreground text-sm font-semibold uppercase tracking-wider">
+                                            Media Sosial
+                                        </h3>
+                                        <div className="flex gap-3">
+                                            {vendor.socialLinks.instagram && (
+                                                <a
+                                                    href={vendor.socialLinks.instagram}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
+                                                    aria-label="Instagram"
+                                                >
+                                                    <Instagram className="size-4" />
+                                                </a>
+                                            )}
+                                            {vendor.socialLinks.x && (
+                                                <a
+                                                    href={vendor.socialLinks.x}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
+                                                    aria-label="X"
+                                                >
+                                                    <XIcon className="size-4" />
+                                                </a>
+                                            )}
+                                            {vendor.socialLinks.tiktok && (
+                                                <a
+                                                    href={vendor.socialLinks.tiktok}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
+                                                    aria-label="TikTok"
+                                                >
+                                                    <TiktokIcon className="size-4" />
+                                                </a>
+                                            )}
+                                            {vendor.socialLinks.youtube && (
+                                                <a
+                                                    href={vendor.socialLinks.youtube}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
+                                                    aria-label="YouTube"
+                                                >
+                                                    <Youtube className="size-4" />
+                                                </a>
+                                            )}
+                                            {vendor.socialLinks.website && (
+                                                <a
+                                                    href={vendor.socialLinks.website}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-xl transition-colors"
+                                                    aria-label="Website"
+                                                >
+                                                    <Globe className="size-4" />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <Separator />
+                                    </>
+                                )}
 
                                 <div className="space-y-3 text-sm">
                                     <div className="flex items-center gap-2">

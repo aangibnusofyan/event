@@ -27,10 +27,12 @@ class VendorProfileController extends Controller
                     'totalAttendees' => 12500,
                     'rating' => 4.8,
                 ],
-                'socialLinks' => [
-                    'instagram' => '#',
-                    'twitter' => '#',
-                    'website' => '#',
+                'socialLinks' => $user->social_links ?? [
+                    'instagram' => null,
+                    'x' => null,
+                    'tiktok' => null,
+                    'youtube' => null,
+                    'website' => null,
                 ],
             ],
             'events' => [
