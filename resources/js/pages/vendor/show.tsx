@@ -18,7 +18,6 @@ import {
     CheckCircle2,
     Clock,
     Copy,
-    Edit3,
     ExternalLink,
     Globe,
     Instagram,
@@ -176,8 +175,6 @@ interface Props {
 }
 
 export default function VendorShow({ vendor, events }: Props) {
-    const { auth } = usePage<{ auth?: { user?: { id: number; role?: string } } }>().props;
-    const isOwner = Boolean(auth?.user && (auth.user.id === vendor.id || auth.user.role === 'vendor'));
 
     const [selectedEvent, setSelectedEvent] = useState<VendorEvent | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -255,7 +252,6 @@ export default function VendorShow({ vendor, events }: Props) {
                 open={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
                 vendor={vendor}
-                isOwner={isOwner}
             />
 
             {/* Modal Hubungi Vendor */}
@@ -747,32 +743,36 @@ function EventDetailDialog({
     open,
     onOpenChange,
     vendor,
-    isOwner,
 }: {
     event: VendorEvent | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     vendor: VendorData;
-    isOwner: boolean;
 }) {
     const [copied, setCopied] = useState(false);
-    const [copiedStreamingLink, setCopiedStreamingLink] = useState(false);
     const [activeTab, setActiveTab] = useState<'info' | 'tickets' | 'agenda' | 'speakers'>('info');
+
+    // Always reset tab to Deskripsi & Detail when dialog opens or event changes
+    useEffect(() => {
+        if (open) {
+            setActiveTab('info');
+        }
+    }, [open, event?.id]);
 
     if (!event) return null;
 
     const handleCopyLink = () => {
         const url = window.location.origin + window.location.pathname + `?event=${event.id}`;
-        navigator.clipboard.writeText(url);
+        copyTextToClipboard(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-5xl max-h-[92vh] overflow-hidden p-0 rounded-2xl flex flex-col gap-0 border-border/80 shadow-2xl">
+            <DialogContent className="w-[94vw] sm:max-w-2xl md:max-w-3xl max-h-[92vh] overflow-hidden p-0 rounded-2xl flex flex-col gap-0 border-border/80 shadow-2xl">
                 {/* Banner / Header */}
-                <div className="relative aspect-[16/9] sm:aspect-[16/8] md:aspect-[16/7] w-full max-h-72 sm:max-h-84 md:max-h-96 overflow-hidden bg-neutral-950 shrink-0">
+                <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-950 shrink-0">
                     {event.image ? (
                         <img
                             src={event.image}
@@ -841,23 +841,17 @@ function EventDetailDialog({
                             <MapPin className="size-4 text-[#C1502E] shrink-0" />
                             <span className="truncate">{event.location}</span>
                         </div>
-                        {event.event_type !== 'offline' && event.streaming_link && (
-                            <a
-                                href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 px-2 py-0.5 rounded-md"
-                            >
-                                <Video className="size-3.5" />
-                                <span>Akses Streaming</span>
-                                <ExternalLink className="size-3" />
-                            </a>
-                        )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="font-serif font-bold text-sm text-[#C1502E]">
-                            Mulai {event.price}
-                        </span>
+                        {event.status === 'past' ? (
+                            <Badge variant="secondary" className="bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-medium text-xs">
+                                Acara Telah Berakhir
+                            </Badge>
+                        ) : (
+                            <span className="font-serif font-bold text-sm text-[#C1502E]">
+                                Mulai {event.price}
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -943,11 +937,11 @@ function EventDetailDialog({
                                             [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
                                             [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
                                             [&_blockquote]:border-l-4 [&_blockquote]:border-[#C1502E]/50 [&_blockquote]:pl-3 [&_blockquote]:italic
-                                            [&_a]:text-[#C1502E] [&_a]:underline"
-                                        dangerouslySetInnerHTML={{ __html: event.description }}
+                                            [&_a]:text-[#C1502E] [&_a]:underline whitespace-pre-line"
+                                        dangerouslySetInnerHTML={{ __html: formatEventDescription(event.description) }}
                                     />
                                 ) : (
-                                    <p className="text-muted-foreground">Belum ada rincian deskripsi tambahan.</p>
+                                    <p className="text-muted-foreground italic">Belum ada rincian deskripsi tambahan.</p>
                                 )}
                             </div>
 
@@ -984,88 +978,25 @@ function EventDetailDialog({
 
                                 {event.event_type !== 'offline' && (
                                     <div className="space-y-3 text-xs text-muted-foreground pt-1">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <p className="font-medium text-foreground text-sm">
-                                                Platform Streaming:{' '}
-                                                <span className="font-semibold text-blue-600 dark:text-blue-400">
-                                                    {event.online_platform || 'Online Meeting / Streaming'}
+                                        <div className="rounded-xl border border-blue-200/80 bg-blue-50/70 dark:border-blue-900/50 dark:bg-blue-950/30 p-4 space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Video className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                                <span className="font-semibold text-foreground text-sm">
+                                                    Platform Acara:{' '}
+                                                    <span className="text-blue-600 dark:text-blue-400">
+                                                        {event.online_platform || 'Online Meeting / Streaming'}
+                                                    </span>
                                                 </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                Acara ini diselenggarakan secara online/virtual. Tautan atau link akses pertemuan akan dibagikan oleh penyelenggara kepada peserta yang telah mendaftar sebelum acara dimulai.
                                             </p>
                                         </div>
-
-                                        {/* Link Streaming / Meeting URL */}
-                                        {event.streaming_link ? (
-                                            <div className="rounded-xl border border-blue-200 bg-blue-50/90 p-4 dark:border-blue-900/60 dark:bg-blue-950/40 space-y-2.5">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
-                                                        <Video className="size-4 text-blue-600 dark:text-blue-400" />
-                                                        Tautan / Link Streaming (Meeting URL):
-                                                    </span>
-                                                    <span className="text-[10px] font-medium bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                                                        Akses Disediakan
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                                                    <a
-                                                        href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="font-mono text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline break-all bg-white/70 dark:bg-black/30 px-3 py-2 rounded-lg border border-blue-200/60 dark:border-blue-800/40 flex-1"
-                                                    >
-                                                        {event.streaming_link}
-                                                    </a>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <Button
-                                                            size="sm"
-                                                            type="button"
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(event.streaming_link || '');
-                                                                setCopiedStreamingLink(true);
-                                                                setTimeout(() => setCopiedStreamingLink(false), 2000);
-                                                            }}
-                                                            variant="outline"
-                                                            className="h-8 text-xs gap-1.5 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                                        >
-                                                            {copiedStreamingLink ? (
-                                                                <>
-                                                                    <CheckCircle2 className="size-3.5 text-emerald-500" />
-                                                                    Tersalin
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Copy className="size-3.5" />
-                                                                    Salin Link
-                                                                </>
-                                                            )}
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-medium"
-                                                            asChild
-                                                        >
-                                                            <a
-                                                                href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                            >
-                                                                <ExternalLink className="size-3.5" />
-                                                                Buka Link Streaming
-                                                            </a>
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-3 text-amber-800 dark:text-amber-300 text-xs">
-                                                * Link streaming pertemuan belum diatur oleh penyelenggara atau akan dibagikan kepada peserta sebelum acara dimulai.
-                                            </div>
-                                        )}
 
                                         {event.streaming_instructions && (
                                             <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
                                                 <p className="font-semibold text-foreground text-[11px] uppercase tracking-wider">
-                                                    Petunjuk Akses / Instruksi Bergabung:
+                                                    Petunjuk / Catatan Acara:
                                                 </p>
                                                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
                                                     {event.streaming_instructions}
@@ -1117,28 +1048,42 @@ function EventDetailDialog({
                                     {event.tickets.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className="rounded-xl border border-border bg-card p-4 transition-all hover:border-[#C1502E]/40"
+                                            className="rounded-xl border border-border bg-card p-4 transition-all hover:border-[#C1502E]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                                         >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h5 className="font-semibold text-foreground text-base">{ticket.name}</h5>
-                                                        <Badge variant="outline" className="text-[10px] uppercase">
-                                                            {ticket.tier.replace('_', ' ')}
-                                                        </Badge>
-                                                    </div>
-                                                    {ticket.description && (
-                                                        <p className="mt-1 text-xs text-muted-foreground">{ticket.description}</p>
-                                                    )}
+                                            <div className="space-y-1 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h5 className="font-semibold text-foreground text-base">{ticket.name}</h5>
+                                                    <Badge variant="outline" className="text-[10px] uppercase">
+                                                        {ticket.tier.replace('_', ' ')}
+                                                    </Badge>
                                                 </div>
-                                                <div className="text-right shrink-0">
-                                                    <span className="font-serif font-bold text-lg text-[#C1502E]">
-                                                        {ticket.formatted_price}
-                                                    </span>
-                                                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                        {ticket.remaining > 0 ? `Sisa ${ticket.remaining} kuota` : 'Habis'}
-                                                    </p>
-                                                </div>
+                                                {ticket.description && (
+                                                    <p className="mt-1 text-xs text-muted-foreground">{ticket.description}</p>
+                                                )}
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    {event.status === 'past'
+                                                        ? 'Penjualan Ditutup (Event Selesai)'
+                                                        : (ticket.remaining > 0 ? `Tersedia sisa ${ticket.remaining} kuota` : 'Tiket Habis')}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-border">
+                                                <span className="font-serif font-bold text-lg text-[#C1502E]">
+                                                    {ticket.formatted_price}
+                                                </span>
+                                                {event.status !== 'past' ? (
+                                                    <Button
+                                                        size="sm"
+                                                        type="button"
+                                                        className="bg-[#C1502E] hover:bg-[#C1502E]/90 text-white text-xs px-4 shadow-sm gap-1.5 cursor-pointer"
+                                                    >
+                                                        <Ticket className="size-3.5" />
+                                                        Daftar Sekarang
+                                                    </Button>
+                                                ) : (
+                                                    <Badge variant="secondary" className="text-[11px] py-1 px-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500">
+                                                        Selesai
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -1208,42 +1153,44 @@ function EventDetailDialog({
 
                 {/* Footer Modal Actions */}
                 <div className="flex items-center justify-between border-t border-border bg-neutral-50 dark:bg-neutral-900/60 p-4 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCopyLink}
-                            className="gap-1.5 text-xs"
-                        >
-                            {copied ? <CheckCircle2 className="size-3.5 text-green-600" /> : <Share2 className="size-3.5" />}
-                            <span>{copied ? 'Link Disalin!' : 'Bagikan'}</span>
-                        </Button>
-
-                        {isOwner && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-1.5 text-xs text-[#C1502E] border-[#C1502E]/30 hover:bg-[#C1502E]/10"
-                                asChild
-                            >
-                                <Link href={`/vendor/events/${event.id}/edit`}>
-                                    <Edit3 className="size-3.5" />
-                                    Edit Event (Vendor)
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
-
                     <Button
                         type="button"
-                        variant="default"
+                        variant="outline"
                         size="sm"
-                        onClick={() => onOpenChange(false)}
-                        className="bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90 text-xs px-5"
+                        onClick={handleCopyLink}
+                        className="gap-1.5 text-xs cursor-pointer"
                     >
-                        Tutup
+                        {copied ? <CheckCircle2 className="size-3.5 text-green-600" /> : <Share2 className="size-3.5" />}
+                        <span>{copied ? 'Link Disalin!' : 'Bagikan'}</span>
                     </Button>
+
+                    <div className="flex items-center gap-2.5">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onOpenChange(false)}
+                            className="text-xs px-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                            Tutup
+                        </Button>
+                        {event.status !== 'past' ? (
+                            <Button
+                                type="button"
+                                className="bg-[#C1502E] hover:bg-[#C1502E]/90 text-white font-medium text-xs sm:text-sm px-6 shadow-md shadow-[#C1502E]/25 gap-2 cursor-pointer"
+                            >
+                                <Ticket className="size-4" />
+                                <span>Daftar Sekarang</span>
+                            </Button>
+                        ) : (
+                            <Badge
+                                variant="secondary"
+                                className="bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-medium text-xs px-3.5 py-1.5"
+                            >
+                                Event Telah Berakhir
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
@@ -1311,8 +1258,19 @@ function CTASection({
 }
 
 /* ─────────────────────────────────────────────
- * Safe Clipboard Helper
+ * Helpers
  * ───────────────────────────────────────────── */
+
+function formatEventDescription(description?: string): string {
+    if (!description) return '';
+    if (/<[a-z][\s\S]*>/i.test(description)) {
+        return description;
+    }
+    return description
+        .split(/\r?\n\r?\n/)
+        .map((p) => `<p>${p.replace(/\r?\n/g, '<br/>')}</p>`)
+        .join('');
+}
 
 function copyTextToClipboard(text: string): boolean {
     if (typeof window === 'undefined') return false;
