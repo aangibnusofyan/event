@@ -14,18 +14,109 @@ class VendorProfileController extends Controller
             ->where('role', 'vendor')
             ->firstOrFail();
 
+        $realEvents = $user->events()
+            ->with(['category', 'tickets', 'agendas', 'speakers', 'sponsors'])
+            ->where('status', 'published')
+            ->orderBy('start_date_time')
+            ->get();
+
+        $formattedEvents = $realEvents->map(function ($event) {
+            $location = match ($event->event_type) {
+                'online' => 'Online ('.($event->online_platform ?? 'Streaming').')',
+                'hybrid' => 'Hybrid ('.($event->venue_name ?? $event->city ?? 'Venue').' & Online)',
+                default => ($event->venue_name ?? $event->city ?? 'Indonesia'),
+            };
+
+            $minTicket = $event->tickets->min('price');
+            $price = ($minTicket === null || $minTicket == 0)
+                ? 'Gratis'
+                : 'Rp '.number_format($minTicket, 0, ',', '.');
+
+            $isPast = $event->end_date_time->isPast();
+
+            $bannerImage = $event->banner_image;
+            if ($bannerImage && ! str_starts_with($bannerImage, 'http://') && ! str_starts_with($bannerImage, 'https://') && ! str_starts_with($bannerImage, '/')) {
+                $bannerImage = '/storage/'.$bannerImage;
+            }
+
+            return [
+                'id' => $event->id,
+                'slug' => $event->slug,
+                'title' => $event->title,
+                'summary' => $event->summary,
+                'description' => $event->description,
+                'event_type' => $event->event_type,
+                'date' => $event->start_date_time->translatedFormat('d M Y'),
+                'time' => $event->start_date_time->format('H:i').' - '.$event->end_date_time->format('H:i').' WIB',
+                'start_date_time' => $event->start_date_time->toIso8601String(),
+                'end_date_time' => $event->end_date_time->toIso8601String(),
+                'timezone' => $event->timezone ?? 'Asia/Jakarta',
+                'location' => $location,
+                'venue_name' => $event->venue_name,
+                'address' => $event->address,
+                'city' => $event->city,
+                'province' => $event->province,
+                'google_maps_url' => $event->google_maps_url,
+                'online_platform' => $event->online_platform,
+                'streaming_link' => $event->streaming_link,
+                'streaming_instructions' => $event->streaming_instructions,
+                'price' => $price,
+                'category' => $event->category?->name ?? 'Umum',
+                'image' => $bannerImage,
+                'status' => $isPast ? 'past' : 'upcoming',
+                'tickets' => $event->tickets->map(fn ($t) => [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'type' => $t->type,
+                    'tier' => $t->tier,
+                    'price' => $t->type === 'free' ? 0 : (float) $t->price,
+                    'formatted_price' => $t->type === 'free' ? 'Gratis' : 'Rp '.number_format($t->price, 0, ',', '.'),
+                    'quantity' => $t->quantity,
+                    'quantity_sold' => $t->quantity_sold,
+                    'remaining' => max(0, $t->quantity - $t->quantity_sold),
+                    'description' => $t->description,
+                ])->values()->all(),
+                'agendas' => $event->agendas->map(fn ($a) => [
+                    'id' => $a->id,
+                    'title' => $a->title,
+                    'description' => $a->description,
+                    'start_time' => $a->start_time,
+                    'end_time' => $a->end_time,
+                    'speaker_name' => $a->speaker_name,
+                    'stage_or_room' => $a->stage_or_room,
+                ])->values()->all(),
+                'speakers' => $event->speakers->map(fn ($s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'role_or_title' => $s->role_or_title,
+                    'organization' => $s->organization,
+                    'bio' => $s->bio,
+                    'avatar' => $s->avatar,
+                ])->values()->all(),
+                'sponsors' => $event->sponsors->map(fn ($sp) => [
+                    'id' => $sp->id,
+                    'name' => $sp->name,
+                    'tier' => $sp->tier,
+                    'logo' => $sp->logo,
+                    'website_url' => $sp->website_url,
+                ])->values()->all(),
+            ];
+        })->values()->all();
+
         return Inertia::render('vendor/show', [
             'vendor' => [
+                'id' => $user->id,
                 'name' => $user->name,
+                'email' => $user->email,
                 'username' => $user->username,
                 'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
                 'bio' => $user->about ?? 'Belum ada informasi tentang vendor ini.',
                 'location' => 'Jakarta, Indonesia',
                 'joinedAt' => $user->created_at->translatedFormat('F Y'),
                 'stats' => [
-                    'totalEvents' => 24,
-                    'totalAttendees' => 12500,
-                    'rating' => 4.8,
+                    'totalEvents' => $realEvents->count(),
+                    'totalAttendees' => $user->events->flatMap->tickets->sum('quantity_sold'),
+                    'rating' => 4.9,
                 ],
                 'socialLinks' => $user->social_links ?? [
                     'instagram' => null,
@@ -35,74 +126,7 @@ class VendorProfileController extends Controller
                     'website' => null,
                 ],
             ],
-            'events' => [
-                [
-                    'id' => 1,
-                    'title' => 'Jakarta Music Festival 2026',
-                    'date' => '15 Sep 2026',
-                    'time' => '18:00 WIB',
-                    'location' => 'Gelora Bung Karno, Jakarta',
-                    'price' => 'Rp 250.000',
-                    'category' => 'Musik',
-                    'image' => null,
-                    'status' => 'upcoming',
-                ],
-                [
-                    'id' => 2,
-                    'title' => 'Tech Summit Indonesia',
-                    'date' => '20 Okt 2026',
-                    'time' => '09:00 WIB',
-                    'location' => 'ICE BSD, Tangerang',
-                    'price' => 'Rp 500.000',
-                    'category' => 'Teknologi',
-                    'image' => null,
-                    'status' => 'upcoming',
-                ],
-                [
-                    'id' => 3,
-                    'title' => 'Workshop UI/UX Design',
-                    'date' => '05 Nov 2026',
-                    'time' => '10:00 WIB',
-                    'location' => 'WeWork, Jakarta Selatan',
-                    'price' => 'Rp 150.000',
-                    'category' => 'Workshop',
-                    'image' => null,
-                    'status' => 'upcoming',
-                ],
-                [
-                    'id' => 4,
-                    'title' => 'Food & Culture Festival',
-                    'date' => '12 Nov 2026',
-                    'time' => '11:00 WIB',
-                    'location' => 'Senayan Park, Jakarta',
-                    'price' => 'Gratis',
-                    'category' => 'Festival',
-                    'image' => null,
-                    'status' => 'upcoming',
-                ],
-                [
-                    'id' => 5,
-                    'title' => 'Startup Networking Night',
-                    'date' => '25 Agu 2026',
-                    'time' => '19:00 WIB',
-                    'location' => 'Block71, Jakarta',
-                    'price' => 'Rp 75.000',
-                    'category' => 'Networking',
-                    'image' => null,
-                    'status' => 'past',
-                ],
-                [
-                    'id' => 6,
-                    'title' => 'Photography Masterclass',
-                    'date' => '10 Agu 2026',
-                    'time' => '13:00 WIB',
-                    'location' => 'Komunitas Salihara, Jakarta',
-                    'price' => 'Rp 200.000',
-                    'category' => 'Workshop',
-                    'image' => null,
-                    'status' => 'past',
-                ],
-            ],
+            'events' => $formattedEvents,
         ]);
     }
 }

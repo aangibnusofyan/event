@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -48,5 +49,29 @@ class User extends Authenticatable implements PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'social_links' => 'array',
         ];
+    }
+
+    /**
+     * @return HasMany<Event, $this>
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
+
+    /**
+     * @return HasMany<EventCoupon, $this>
+     */
+    public function coupons(): HasMany
+    {
+        return $this->hasMany(EventCoupon::class);
+    }
+
+    /**
+     * Determine if the user is a vendor.
+     */
+    public function isVendor(): bool
+    {
+        return $this->role === 'vendor';
     }
 }

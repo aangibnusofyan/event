@@ -127,8 +127,8 @@ export function HeroSection() {
                     </Button>
                     <Button
                         size="lg"
-                        variant="outline"
-                        className="border-white/25 px-8 text-base text-white hover:bg-white/10 hover:text-white"
+                        className="bg-[#8C6538] px-8 text-base text-white shadow-md hover:bg-[#785324] border-0 font-medium transition-colors"
+                        asChild
                     >
                         <a href="#fitur">Jelajahi Fitur</a>
                     </Button>
@@ -153,16 +153,16 @@ export function HeroSection() {
             </div>
 
             {/* Bottom wave divider */}
-            <div className="absolute right-0 bottom-0 left-0">
+            <div className="pointer-events-none absolute -bottom-1 left-0 right-0 overflow-hidden leading-none z-0">
                 <svg
                     viewBox="0 0 1440 80"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-full"
+                    className="block w-full h-12 sm:h-16 lg:h-20"
                     preserveAspectRatio="none"
                 >
                     <path
-                        d="M0 80H1440V40C1440 40 1320 0 1080 20C840 40 720 60 480 40C240 20 120 0 0 20V80Z"
+                        d="M0 85H1440V40C1440 40 1320 0 1080 20C840 40 720 60 480 40C240 20 120 0 0 20V85Z"
                         className="fill-background"
                     />
                 </svg>

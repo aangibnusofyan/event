@@ -1,5 +1,5 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { usePage, Link } from '@inertiajs/react';
+import { BookOpen, Calendar, ExternalLink, FolderGit2, LayoutGrid, TicketPercent } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,30 +14,50 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import type { NavItem } from '@/types';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+import type { Auth, NavItem } from '@/types';
 
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isVendor = auth.user?.role === 'vendor';
+
+    const mainNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        ...(isVendor
+            ? [
+                  {
+                      title: 'Event Saya',
+                      href: '/vendor/events',
+                      icon: Calendar,
+                  },
+                  {
+                      title: 'Kupon Promo',
+                      href: '/vendor/coupons',
+                      icon: TicketPercent,
+                  },
+                  ...(auth.user?.username
+                      ? [
+                            {
+                                title: 'Halaman Profil Publik',
+                                href: `/${auth.user.username}`,
+                                icon: ExternalLink,
+                            },
+                        ]
+                      : []),
+              ]
+            : []),
+    ];
+
+    const footerNavItems: NavItem[] = [
+        {
+            title: 'Dokumentasi',
+            href: 'https://laravel.com/docs',
+            icon: BookOpen,
+        },
+    ];
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

@@ -1,4 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/landing/navbar';
 import { Footer } from '@/components/landing/footer';
 import { home } from '@/routes';
@@ -7,20 +8,34 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useScrollAnimation } from '@/hooks/use-scroll-animation';
 import {
+    Award,
+    Building2,
     Calendar,
+    CheckCircle2,
     Clock,
+    Copy,
+    Edit3,
+    ExternalLink,
     Globe,
     Instagram,
+    Mail,
     MapPin,
     MessageCircle,
+    Send,
+    Share2,
     Star,
     Ticket,
-    Youtube,
     Users,
+    Video,
+    Youtube,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 function XIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -61,20 +76,81 @@ function TiktokIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
-interface VendorEvent {
+interface EventTicketItem {
+    id: number;
+    name: string;
+    type: 'free' | 'paid';
+    tier: string;
+    price: number;
+    formatted_price: string;
+    quantity: number;
+    quantity_sold: number;
+    remaining: number;
+    description?: string | null;
+}
+
+interface EventAgendaItem {
     id: number;
     title: string;
+    description?: string | null;
+    start_time: string;
+    end_time: string;
+    speaker_name?: string | null;
+    stage_or_room?: string | null;
+}
+
+interface EventSpeakerItem {
+    id: number;
+    name: string;
+    role_or_title?: string | null;
+    organization?: string | null;
+    bio?: string | null;
+    avatar?: string | null;
+}
+
+interface EventSponsorItem {
+    id: number;
+    name: string;
+    tier: string;
+    logo?: string | null;
+    website_url?: string | null;
+}
+
+interface VendorEvent {
+    id: number;
+    slug?: string;
+    title: string;
+    summary?: string | null;
+    description?: string | null;
+    event_type?: 'online' | 'offline' | 'hybrid';
     date: string;
     time: string;
+    start_date_time?: string;
+    end_date_time?: string;
+    timezone?: string;
     location: string;
+    venue_name?: string | null;
+    address?: string | null;
+    city?: string | null;
+    province?: string | null;
+    google_maps_url?: string | null;
+    online_platform?: string | null;
+    streaming_link?: string | null;
+    streaming_instructions?: string | null;
     price: string;
     category: string;
     image: string | null;
     status: 'upcoming' | 'past';
+    tickets?: EventTicketItem[];
+    agendas?: EventAgendaItem[];
+    speakers?: EventSpeakerItem[];
+    sponsors?: EventSponsorItem[];
 }
 
 interface VendorData {
+    id?: number;
     name: string;
+    email?: string;
     username: string;
     avatar: string | null;
     bio: string;
@@ -100,6 +176,34 @@ interface Props {
 }
 
 export default function VendorShow({ vendor, events }: Props) {
+    const { auth } = usePage<{ auth?: { user?: { id: number; role?: string } } }>().props;
+    const isOwner = Boolean(auth?.user && (auth.user.id === vendor.id || auth.user.role === 'vendor'));
+
+    const [selectedEvent, setSelectedEvent] = useState<VendorEvent | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isContactOpen, setIsContactOpen] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
+
+    // Auto-open event detail if URL contains ?event=ID
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const eventId = params.get('event');
+            if (eventId) {
+                const target = events.find((e) => e.id === Number(eventId));
+                if (target) {
+                    setSelectedEvent(target);
+                    setIsDetailOpen(true);
+                }
+            }
+        }
+    }, [events]);
+
+    const handleSelectEvent = (event: VendorEvent) => {
+        setSelectedEvent(event);
+        setIsDetailOpen(true);
+    };
+
     const upcomingEvents = events.filter((e) => e.status === 'upcoming');
     const pastEvents = events.filter((e) => e.status === 'past');
 
@@ -115,7 +219,11 @@ export default function VendorShow({ vendor, events }: Props) {
             <Navbar hideNavItems />
 
             <main>
-                <HeroSection vendor={vendor} />
+                <HeroSection
+                    vendor={vendor}
+                    onContactClick={() => setIsContactOpen(true)}
+                    onShareClick={() => setIsShareOpen(true)}
+                />
                 <StatsSection stats={vendor.stats} />
                 <BioSection vendor={vendor} />
                 {upcomingEvents.length > 0 && (
@@ -123,6 +231,7 @@ export default function VendorShow({ vendor, events }: Props) {
                         title="Event Mendatang"
                         subtitle="Event yang akan datang dari vendor ini"
                         events={upcomingEvents}
+                        onSelectEvent={handleSelectEvent}
                     />
                 )}
                 {pastEvents.length > 0 && (
@@ -130,11 +239,38 @@ export default function VendorShow({ vendor, events }: Props) {
                         title="Event Sebelumnya"
                         subtitle="Event yang sudah selesai diselenggarakan"
                         events={pastEvents}
+                        onSelectEvent={handleSelectEvent}
                         muted
                     />
                 )}
-                <CTASection vendor={vendor} />
+                <CTASection
+                    vendor={vendor}
+                    onContactClick={() => setIsContactOpen(true)}
+                />
             </main>
+
+            {/* Modal Detail Event */}
+            <EventDetailDialog
+                event={selectedEvent}
+                open={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
+                vendor={vendor}
+                isOwner={isOwner}
+            />
+
+            {/* Modal Hubungi Vendor */}
+            <ContactVendorDialog
+                open={isContactOpen}
+                onOpenChange={setIsContactOpen}
+                vendor={vendor}
+            />
+
+            {/* Modal Bagikan Profil */}
+            <ShareVendorDialog
+                open={isShareOpen}
+                onOpenChange={setIsShareOpen}
+                vendor={vendor}
+            />
 
             <Footer />
         </>
@@ -145,7 +281,15 @@ export default function VendorShow({ vendor, events }: Props) {
  * Hero Section
  * ───────────────────────────────────────────── */
 
-function HeroSection({ vendor }: { vendor: VendorData }) {
+function HeroSection({
+    vendor,
+    onContactClick,
+    onShareClick,
+}: {
+    vendor: VendorData;
+    onContactClick: () => void;
+    onShareClick: () => void;
+}) {
     const initials = vendor.name
         .split(' ')
         .map((w) => w[0])
@@ -205,31 +349,37 @@ function HeroSection({ vendor }: { vendor: VendorData }) {
 
                     {/* Action Buttons */}
                     <div className="mt-6 flex gap-3 lg:mt-0">
-                        <Button className="bg-[#C1502E] px-6 text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90">
+                        <Button
+                            type="button"
+                            onClick={onContactClick}
+                            className="bg-[#C1502E] px-6 text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2"
+                        >
                             <MessageCircle className="size-4" />
                             Hubungi
                         </Button>
                         <Button
-                            variant="outline"
-                            className="border-white/25 text-white hover:bg-white/10 hover:text-white"
+                            type="button"
+                            onClick={onShareClick}
+                            className="bg-[#8C6538] text-white hover:bg-[#785324] shadow-md border-0 px-6 font-medium gap-2 transition-colors cursor-pointer"
                         >
-                            Bagikan
+                            <Share2 className="size-4" />
+                            <span>Bagikan</span>
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Bottom wave */}
-            <div className="absolute right-0 bottom-0 left-0">
+            <div className="pointer-events-none absolute -bottom-1 left-0 right-0 overflow-hidden leading-none z-0">
                 <svg
                     viewBox="0 0 1440 80"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-full"
+                    className="block w-full h-12 sm:h-16 lg:h-20"
                     preserveAspectRatio="none"
                 >
                     <path
-                        d="M0 80H1440V40C1440 40 1320 0 1080 20C840 40 720 60 480 40C240 20 120 0 0 20V80Z"
+                        d="M0 85H1440V40C1440 40 1320 0 1080 20C840 40 720 60 480 40C240 20 120 0 0 20V85Z"
                         className="fill-background"
                     />
                 </svg>
@@ -268,7 +418,7 @@ function StatsSection({
     const { ref, isVisible } = useScrollAnimation();
 
     return (
-        <section className="bg-background -mt-1 py-4">
+        <section className="relative z-10 bg-background -mt-3 pt-2 pb-6">
             <div
                 ref={ref}
                 className={cn(
@@ -442,10 +592,12 @@ function EventCard({
     event,
     index,
     muted,
+    onSelect,
 }: {
     event: VendorEvent;
     index: number;
     muted?: boolean;
+    onSelect: (event: VendorEvent) => void;
 }) {
     const { ref, isVisible } = useScrollAnimation(0.1);
 
@@ -461,16 +613,25 @@ function EventCard({
             style={{ transitionDelay: `${index * 100}ms` }}
         >
             <Card
+                onClick={() => onSelect(event)}
                 className={cn(
-                    'group border-border/50 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
+                    'group border-border/50 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer',
                     muted && 'opacity-75 hover:opacity-100',
                 )}
             >
-                {/* Image Placeholder */}
+                {/* Event Image / Placeholder */}
                 <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#1B3A5C]/20 via-[#152E4A]/10 to-[#D9C4A3]/20">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <Ticket className="text-primary/20 size-12" />
-                    </div>
+                    {event.image ? (
+                        <img
+                            src={event.image}
+                            alt={event.title}
+                            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Ticket className="text-primary/20 size-12" />
+                        </div>
+                    )}
                     {/* Category badge */}
                     <Badge className="absolute top-3 left-3 bg-[#1B3A5C]/90 text-white backdrop-blur-sm">
                         {event.category}
@@ -512,14 +673,17 @@ function EventCard({
                         <span className="font-serif text-lg font-bold text-[#C1502E]">
                             {event.price}
                         </span>
-                        {event.status === 'upcoming' && (
-                            <Button
-                                size="sm"
-                                className="bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90"
-                            >
-                                Lihat Detail
-                            </Button>
-                        )}
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSelect(event);
+                            }}
+                            className="bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90"
+                        >
+                            Lihat Detail
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -532,11 +696,13 @@ function EventsSection({
     subtitle,
     events,
     muted,
+    onSelectEvent,
 }: {
     title: string;
     subtitle: string;
     events: VendorEvent[];
     muted?: boolean;
+    onSelectEvent: (event: VendorEvent) => void;
 }) {
     const { ref, isVisible } = useScrollAnimation();
 
@@ -567,6 +733,7 @@ function EventsSection({
                             event={event}
                             index={idx}
                             muted={muted}
+                            onSelect={onSelectEvent}
                         />
                     ))}
                 </div>
@@ -575,11 +742,525 @@ function EventsSection({
     );
 }
 
+function EventDetailDialog({
+    event,
+    open,
+    onOpenChange,
+    vendor,
+    isOwner,
+}: {
+    event: VendorEvent | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    vendor: VendorData;
+    isOwner: boolean;
+}) {
+    const [copied, setCopied] = useState(false);
+    const [copiedStreamingLink, setCopiedStreamingLink] = useState(false);
+    const [activeTab, setActiveTab] = useState<'info' | 'tickets' | 'agenda' | 'speakers'>('info');
+
+    if (!event) return null;
+
+    const handleCopyLink = () => {
+        const url = window.location.origin + window.location.pathname + `?event=${event.id}`;
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-5xl max-h-[92vh] overflow-hidden p-0 rounded-2xl flex flex-col gap-0 border-border/80 shadow-2xl">
+                {/* Banner / Header */}
+                <div className="relative aspect-[16/9] sm:aspect-[16/8] md:aspect-[16/7] w-full max-h-72 sm:max-h-84 md:max-h-96 overflow-hidden bg-neutral-950 shrink-0">
+                    {event.image ? (
+                        <img
+                            src={event.image}
+                            alt={event.title}
+                            className="size-full object-cover object-center"
+                        />
+                    ) : (
+                        <div className="size-full flex items-center justify-center bg-gradient-to-br from-[#1B3A5C] via-[#152E4A] to-[#0F2035]">
+                            <Ticket className="size-16 text-white/30" />
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+
+                    {/* Badges */}
+                    <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
+                        <Badge className="bg-[#1B3A5C] text-white border-0 shadow-md">
+                            {event.category}
+                        </Badge>
+                        <Badge
+                            className={cn(
+                                'text-white shadow-md border-0',
+                                event.event_type === 'online'
+                                    ? 'bg-blue-600'
+                                    : event.event_type === 'hybrid'
+                                      ? 'bg-purple-600'
+                                      : 'bg-emerald-600',
+                            )}
+                        >
+                            {event.event_type === 'online'
+                                ? 'Virtual (Online)'
+                                : event.event_type === 'hybrid'
+                                  ? 'Hybrid (Fisik + Online)'
+                                  : 'Tatap Muka (Offline)'}
+                        </Badge>
+                        {event.status === 'past' && (
+                            <Badge variant="secondary" className="bg-neutral-800/90 text-neutral-300">
+                                Selesai
+                            </Badge>
+                        )}
+                    </div>
+
+                    {/* Bottom banner info */}
+                    <div className="absolute bottom-3 left-4 right-4 text-white">
+                        <h2 className="font-serif text-xl sm:text-2xl font-bold leading-tight line-clamp-2 drop-shadow-md">
+                            {event.title}
+                        </h2>
+                        <p className="text-xs text-white/80 mt-1 flex items-center gap-1.5">
+                            <span>Diselenggarakan oleh</span>
+                            <span className="font-semibold text-[#D9C4A3]">{vendor.name}</span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Subheader Quick Stats */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-neutral-50 px-6 py-3 text-xs text-muted-foreground dark:bg-neutral-900/50">
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <Calendar className="size-4 text-[#C1502E]" />
+                            <span>{event.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Clock className="size-4 text-[#C1502E]" />
+                            <span>{event.time}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 truncate max-w-xs">
+                            <MapPin className="size-4 text-[#C1502E] shrink-0" />
+                            <span className="truncate">{event.location}</span>
+                        </div>
+                        {event.event_type !== 'offline' && event.streaming_link && (
+                            <a
+                                href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 px-2 py-0.5 rounded-md"
+                            >
+                                <Video className="size-3.5" />
+                                <span>Akses Streaming</span>
+                                <ExternalLink className="size-3" />
+                            </a>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="font-serif font-bold text-sm text-[#C1502E]">
+                            Mulai {event.price}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Navigation Tabs inside modal */}
+                <div className="flex border-b border-border px-6 pt-2 bg-background shrink-0 gap-4 overflow-x-auto text-sm">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('info')}
+                        className={cn(
+                            'pb-2.5 font-medium transition-colors border-b-2 -mb-px',
+                            activeTab === 'info'
+                                ? 'border-[#C1502E] text-[#C1502E] font-semibold'
+                                : 'border-transparent text-muted-foreground hover:text-foreground',
+                        )}
+                    >
+                        Deskripsi & Detail
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('tickets')}
+                        className={cn(
+                            'pb-2.5 font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5',
+                            activeTab === 'tickets'
+                                ? 'border-[#C1502E] text-[#C1502E] font-semibold'
+                                : 'border-transparent text-muted-foreground hover:text-foreground',
+                        )}
+                    >
+                        Tiket
+                        {event.tickets && event.tickets.length > 0 && (
+                            <span className="rounded-full bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.2 text-[11px]">
+                                {event.tickets.length}
+                            </span>
+                        )}
+                    </button>
+                    {event.agendas && event.agendas.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('agenda')}
+                            className={cn(
+                                'pb-2.5 font-medium transition-colors border-b-2 -mb-px',
+                                activeTab === 'agenda'
+                                    ? 'border-[#C1502E] text-[#C1502E] font-semibold'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            Rundown ({event.agendas.length})
+                        </button>
+                    )}
+                    {event.speakers && event.speakers.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('speakers')}
+                            className={cn(
+                                'pb-2.5 font-medium transition-colors border-b-2 -mb-px',
+                                activeTab === 'speakers'
+                                    ? 'border-[#C1502E] text-[#C1502E] font-semibold'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            Pembicara ({event.speakers.length})
+                        </button>
+                    )}
+                </div>
+
+                {/* Content Area */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm">
+                    {activeTab === 'info' && (
+                        <div className="space-y-6">
+                            {event.summary && (
+                                <div className="rounded-xl border border-border/60 bg-muted/30 p-4 text-foreground italic">
+                                    "{event.summary}"
+                                </div>
+                            )}
+
+                            <div>
+                                <h4 className="font-serif font-bold text-base text-foreground mb-3">Tentang Acara Ini</h4>
+                                {event.description ? (
+                                    <div
+                                        className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed
+                                            [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2
+                                            [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1.5
+                                            [&_p]:mb-3
+                                            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
+                                            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
+                                            [&_blockquote]:border-l-4 [&_blockquote]:border-[#C1502E]/50 [&_blockquote]:pl-3 [&_blockquote]:italic
+                                            [&_a]:text-[#C1502E] [&_a]:underline"
+                                        dangerouslySetInnerHTML={{ __html: event.description }}
+                                    />
+                                ) : (
+                                    <p className="text-muted-foreground">Belum ada rincian deskripsi tambahan.</p>
+                                )}
+                            </div>
+
+                            {/* Location & Access Details */}
+                            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                    {event.event_type === 'online' ? (
+                                        <Video className="size-4 text-blue-500" />
+                                    ) : (
+                                        <MapPin className="size-4 text-[#C1502E]" />
+                                    )}
+                                    {event.event_type === 'online' ? 'Akses Streaming & Platform' : 'Lokasi & Tempat Acara'}
+                                </h4>
+
+                                {event.event_type !== 'online' && (
+                                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                                        <p className="font-medium text-foreground text-sm">{event.venue_name || 'Venue Ditentukan Panitia'}</p>
+                                        {event.address && <p>{event.address}</p>}
+                                        {(event.city || event.province) && (
+                                            <p>{[event.city, event.province].filter(Boolean).join(', ')}</p>
+                                        )}
+                                        {event.google_maps_url && (
+                                            <div className="pt-2">
+                                                <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs" asChild>
+                                                    <a href={event.google_maps_url} target="_blank" rel="noopener noreferrer">
+                                                        <ExternalLink className="size-3.5" />
+                                                        Buka Navigasi Google Maps
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {event.event_type !== 'offline' && (
+                                    <div className="space-y-3 text-xs text-muted-foreground pt-1">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="font-medium text-foreground text-sm">
+                                                Platform Streaming:{' '}
+                                                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                                    {event.online_platform || 'Online Meeting / Streaming'}
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        {/* Link Streaming / Meeting URL */}
+                                        {event.streaming_link ? (
+                                            <div className="rounded-xl border border-blue-200 bg-blue-50/90 p-4 dark:border-blue-900/60 dark:bg-blue-950/40 space-y-2.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                                                        <Video className="size-4 text-blue-600 dark:text-blue-400" />
+                                                        Tautan / Link Streaming (Meeting URL):
+                                                    </span>
+                                                    <span className="text-[10px] font-medium bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                                        Akses Disediakan
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                                                    <a
+                                                        href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-mono text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline break-all bg-white/70 dark:bg-black/30 px-3 py-2 rounded-lg border border-blue-200/60 dark:border-blue-800/40 flex-1"
+                                                    >
+                                                        {event.streaming_link}
+                                                    </a>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <Button
+                                                            size="sm"
+                                                            type="button"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(event.streaming_link || '');
+                                                                setCopiedStreamingLink(true);
+                                                                setTimeout(() => setCopiedStreamingLink(false), 2000);
+                                                            }}
+                                                            variant="outline"
+                                                            className="h-8 text-xs gap-1.5 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                                                        >
+                                                            {copiedStreamingLink ? (
+                                                                <>
+                                                                    <CheckCircle2 className="size-3.5 text-emerald-500" />
+                                                                    Tersalin
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Copy className="size-3.5" />
+                                                                    Salin Link
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-medium"
+                                                            asChild
+                                                        >
+                                                            <a
+                                                                href={event.streaming_link.startsWith('http') ? event.streaming_link : `https://${event.streaming_link}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                <ExternalLink className="size-3.5" />
+                                                                Buka Link Streaming
+                                                            </a>
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-3 text-amber-800 dark:text-amber-300 text-xs">
+                                                * Link streaming pertemuan belum diatur oleh penyelenggara atau akan dibagikan kepada peserta sebelum acara dimulai.
+                                            </div>
+                                        )}
+
+                                        {event.streaming_instructions && (
+                                            <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
+                                                <p className="font-semibold text-foreground text-[11px] uppercase tracking-wider">
+                                                    Petunjuk Akses / Instruksi Bergabung:
+                                                </p>
+                                                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                                                    {event.streaming_instructions}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sponsors if available */}
+                            {event.sponsors && event.sponsors.length > 0 && (
+                                <div>
+                                    <h4 className="font-serif font-bold text-base text-foreground mb-3 flex items-center gap-2">
+                                        <Award className="size-4 text-[#C1502E]" />
+                                        Sponsor & Mitra
+                                    </h4>
+                                    <div className="flex flex-wrap gap-3">
+                                        {event.sponsors.map((sp) => (
+                                            <div key={sp.id} className="flex items-center gap-2 rounded-lg border border-border bg-card p-2.5">
+                                                {sp.logo ? (
+                                                    <img src={sp.logo} alt={sp.name} className="size-6 object-contain" />
+                                                ) : (
+                                                    <Building2 className="size-5 text-muted-foreground" />
+                                                )}
+                                                <div>
+                                                    <p className="text-xs font-semibold text-foreground">{sp.name}</p>
+                                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{sp.tier}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'tickets' && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-serif font-bold text-base text-foreground">Kategori Tiket Acara</h4>
+                                <span className="text-xs text-muted-foreground">Total {event.tickets?.length ?? 0} kategori tiket</span>
+                            </div>
+
+                            {(!event.tickets || event.tickets.length === 0) ? (
+                                <p className="text-muted-foreground py-6 text-center">Belum ada tier tiket yang dikonfigurasi.</p>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {event.tickets.map((ticket) => (
+                                        <div
+                                            key={ticket.id}
+                                            className="rounded-xl border border-border bg-card p-4 transition-all hover:border-[#C1502E]/40"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h5 className="font-semibold text-foreground text-base">{ticket.name}</h5>
+                                                        <Badge variant="outline" className="text-[10px] uppercase">
+                                                            {ticket.tier.replace('_', ' ')}
+                                                        </Badge>
+                                                    </div>
+                                                    {ticket.description && (
+                                                        <p className="mt-1 text-xs text-muted-foreground">{ticket.description}</p>
+                                                    )}
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <span className="font-serif font-bold text-lg text-[#C1502E]">
+                                                        {ticket.formatted_price}
+                                                    </span>
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                        {ticket.remaining > 0 ? `Sisa ${ticket.remaining} kuota` : 'Habis'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'agenda' && (
+                        <div className="space-y-4">
+                            <h4 className="font-serif font-bold text-base text-foreground">Susunan Acara (Rundown)</h4>
+                            <div className="relative border-l-2 border-border/80 pl-4 ml-2 space-y-4">
+                                {event.agendas?.map((item) => (
+                                    <div key={item.id} className="relative group">
+                                        <div className="absolute -left-[23px] top-1.5 size-3 rounded-full border-2 border-background bg-[#C1502E]" />
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-[#C1502E]">
+                                            <Clock className="size-3.5" />
+                                            <span>{item.start_time} - {item.end_time}</span>
+                                            {item.stage_or_room && (
+                                                <Badge variant="secondary" className="text-[10px] py-0">
+                                                    {item.stage_or_room}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <h5 className="font-semibold text-foreground text-sm mt-1">{item.title}</h5>
+                                        {item.speaker_name && (
+                                            <p className="text-xs text-muted-foreground mt-0.5">Oleh: {item.speaker_name}</p>
+                                        )}
+                                        {item.description && (
+                                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.description}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'speakers' && (
+                        <div className="space-y-4">
+                            <h4 className="font-serif font-bold text-base text-foreground">Pembicara & Narasumber</h4>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {event.speakers?.map((speaker) => (
+                                    <div key={speaker.id} className="rounded-xl border border-border bg-card p-4 flex gap-3 items-start">
+                                        <Avatar className="size-12 border border-border">
+                                            {speaker.avatar && <AvatarImage src={speaker.avatar} alt={speaker.name} />}
+                                            <AvatarFallback className="bg-[#1B3A5C] text-white font-semibold">
+                                                {speaker.name.slice(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="space-y-1">
+                                            <h5 className="font-semibold text-foreground text-sm">{speaker.name}</h5>
+                                            <p className="text-xs text-[#C1502E] font-medium">
+                                                {[speaker.role_or_title, speaker.organization].filter(Boolean).join(' • ')}
+                                            </p>
+                                            {speaker.bio && (
+                                                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                                                    {speaker.bio}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Modal Actions */}
+                <div className="flex items-center justify-between border-t border-border bg-neutral-50 dark:bg-neutral-900/60 p-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCopyLink}
+                            className="gap-1.5 text-xs"
+                        >
+                            {copied ? <CheckCircle2 className="size-3.5 text-green-600" /> : <Share2 className="size-3.5" />}
+                            <span>{copied ? 'Link Disalin!' : 'Bagikan'}</span>
+                        </Button>
+
+                        {isOwner && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5 text-xs text-[#C1502E] border-[#C1502E]/30 hover:bg-[#C1502E]/10"
+                                asChild
+                            >
+                                <Link href={`/vendor/events/${event.id}/edit`}>
+                                    <Edit3 className="size-3.5" />
+                                    Edit Event (Vendor)
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => onOpenChange(false)}
+                        className="bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90 text-xs px-5"
+                    >
+                        Tutup
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 /* ─────────────────────────────────────────────
  * CTA Section
  * ───────────────────────────────────────────── */
 
-function CTASection({ vendor }: { vendor: VendorData }) {
+function CTASection({
+    vendor,
+    onContactClick,
+}: {
+    vendor: VendorData;
+    onContactClick: () => void;
+}) {
     const { ref, isVisible } = useScrollAnimation();
 
     return (
@@ -608,16 +1289,17 @@ function CTASection({ vendor }: { vendor: VendorData }) {
                 </p>
                 <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                     <Button
+                        type="button"
                         size="lg"
-                        className="bg-[#C1502E] px-10 text-base text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90"
+                        onClick={onContactClick}
+                        className="bg-[#C1502E] px-10 text-base text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2"
                     >
                         <MessageCircle className="size-4" />
                         Hubungi Vendor
                     </Button>
                     <Button
                         size="lg"
-                        variant="outline"
-                        className="border-white/25 px-10 text-base text-white hover:bg-white/10 hover:text-white"
+                        className="bg-[#8C6538] px-10 text-base text-white shadow-md hover:bg-[#785324] border-0 font-medium"
                         asChild
                     >
                         <Link href={home().url}>Kembali ke Beranda</Link>
@@ -625,5 +1307,365 @@ function CTASection({ vendor }: { vendor: VendorData }) {
                 </div>
             </div>
         </section>
+    );
+}
+
+/* ─────────────────────────────────────────────
+ * Safe Clipboard Helper
+ * ───────────────────────────────────────────── */
+
+function copyTextToClipboard(text: string): boolean {
+    if (typeof window === 'undefined') return false;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).catch(() => {});
+        return true;
+    }
+    try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/* ─────────────────────────────────────────────
+ * Contact Vendor Dialog
+ * ───────────────────────────────────────────── */
+
+function ContactVendorDialog({
+    open,
+    onOpenChange,
+    vendor,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    vendor: VendorData;
+}) {
+    const [senderName, setSenderName] = useState('');
+    const [senderContact, setSenderContact] = useState('');
+    const [subject, setSubject] = useState('');
+    const [message, setMessage] = useState('');
+    const [isSent, setIsSent] = useState(false);
+    const [copiedEmail, setCopiedEmail] = useState(false);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!message.trim()) return;
+        setIsSent(true);
+    };
+
+    const handleCopyEmail = () => {
+        if (vendor.email) {
+            copyTextToClipboard(vendor.email);
+            setCopiedEmail(true);
+            setTimeout(() => setCopiedEmail(false), 2000);
+        }
+    };
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+        `Halo ${vendor.name}, saya menemukan profil Anda di SpotEvent.id dan tertarik ingin berdiskusi mengenai event Anda.`
+    )}`;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border-border shadow-2xl">
+                <div className="bg-gradient-to-r from-[#1B3A5C] via-[#183656] to-[#0F2035] p-6 text-white">
+                    <div className="flex items-center gap-3.5">
+                        <Avatar className="size-14 ring-2 ring-white/20">
+                            {vendor.avatar && <AvatarImage src={vendor.avatar} alt={vendor.name} className="object-cover" />}
+                            <AvatarFallback className="bg-[#C1502E] font-serif text-xl font-bold text-white">
+                                {vendor.name.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <h3 className="font-serif text-xl font-bold text-white leading-tight">
+                                Hubungi {vendor.name}
+                            </h3>
+                            <p className="text-xs text-white/70 mt-0.5">@{vendor.username}</p>
+                            <span className="inline-block text-[11px] text-[#D9C4A3] mt-1 font-medium">
+                                ⭐ {vendor.stats.rating} / 5.0 • {vendor.stats.totalEvents} Event
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 space-y-5 text-sm max-h-[75vh] overflow-y-auto">
+                    {isSent ? (
+                        <div className="py-8 text-center space-y-3">
+                            <div className="mx-auto size-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="size-7" />
+                            </div>
+                            <h4 className="font-serif font-bold text-lg text-foreground">
+                                Pesan Berhasil Terkirim!
+                            </h4>
+                            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                                Terima kasih telah menghubungi <span className="font-semibold text-foreground">{vendor.name}</span>. Vendor akan segera merespons pesan Anda ke kontak yang telah Anda cantumkan.
+                            </p>
+                            <div className="pt-2">
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSent(false);
+                                        setMessage('');
+                                        onOpenChange(false);
+                                    }}
+                                    className="bg-[#1B3A5C] hover:bg-[#152E4A] text-white font-medium px-6"
+                                >
+                                    Tutup
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Fast Direct Contacts */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {vendor.email && (
+                                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border bg-muted/30">
+                                        <div className="min-w-0 flex items-center gap-2">
+                                            <Mail className="size-4 text-[#C1502E] shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Email</p>
+                                                <p className="text-xs font-medium text-foreground truncate">{vendor.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                type="button"
+                                                onClick={handleCopyEmail}
+                                                className="h-7 px-2 text-xs"
+                                                title="Salin Email"
+                                            >
+                                                {copiedEmail ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-xs"
+                                                asChild
+                                            >
+                                                <a href={`mailto:${vendor.email}?subject=Tanya%20Event%20${encodeURIComponent(vendor.name)}`}>
+                                                    <ExternalLink className="size-3" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <a
+                                    href={whatsappUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/80 dark:border-emerald-900/60 dark:bg-emerald-950/30 transition-colors"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <MessageCircle className="size-4 text-emerald-600 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase tracking-wider font-semibold">WhatsApp</p>
+                                            <p className="text-xs font-medium text-emerald-950 dark:text-emerald-200">Chat Langsung</p>
+                                        </div>
+                                    </div>
+                                    <ExternalLink className="size-3.5 text-emerald-600" />
+                                </a>
+                            </div>
+
+                            {/* Message Form */}
+                            <form onSubmit={handleSubmit} className="space-y-3 pt-2 border-t border-border">
+                                <div className="space-y-1">
+                                    <Label htmlFor="senderName" className="text-xs font-medium">Nama Anda</Label>
+                                    <Input
+                                        id="senderName"
+                                        placeholder="Contoh: Budi Santoso"
+                                        value={senderName}
+                                        onChange={(e) => setSenderName(e.target.value)}
+                                        required
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="senderContact" className="text-xs font-medium">Email atau Nomor WhatsApp Anda</Label>
+                                    <Input
+                                        id="senderContact"
+                                        placeholder="budi@example.com / 08123456789"
+                                        value={senderContact}
+                                        onChange={(e) => setSenderContact(e.target.value)}
+                                        required
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="subject" className="text-xs font-medium">Subjek / Topik (Opsional)</Label>
+                                    <Input
+                                        id="subject"
+                                        placeholder="Pertanyaan seputar tiket / sponsor event..."
+                                        value={subject}
+                                        onChange={(e) => setSubject(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="message" className="text-xs font-medium">Pesan Anda</Label>
+                                    <Textarea
+                                        id="message"
+                                        rows={3}
+                                        placeholder="Tuliskan pesan atau pertanyaan Anda di sini..."
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        required
+                                        className="text-xs resize-none"
+                                    />
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-[#C1502E] hover:bg-[#C1502E]/90 text-white font-medium gap-2 shadow-md"
+                                >
+                                    <Send className="size-4" />
+                                    Kirim Pesan ke Vendor
+                                </Button>
+                            </form>
+                        </>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/* ─────────────────────────────────────────────
+ * Share Vendor Dialog
+ * ───────────────────────────────────────────── */
+
+function ShareVendorDialog({
+    open,
+    onOpenChange,
+    vendor,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    vendor: VendorData;
+}) {
+    const [copied, setCopied] = useState(false);
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : `http://event.test/${vendor.username}`;
+
+    const handleCopy = () => {
+        copyTextToClipboard(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+    };
+
+    const shareItems = [
+        {
+            name: 'WhatsApp',
+            icon: <MessageCircle className="size-4 text-emerald-600" />,
+            url: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Lihat profil event ${vendor.name} di SpotEvent.id:\n${shareUrl}`)}`,
+            color: 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 dark:hover:bg-emerald-950/40',
+        },
+        {
+            name: 'X (Twitter)',
+            icon: <XIcon className="size-4" />,
+            url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Lihat profil event ${vendor.name} di SpotEvent.id`)}&url=${encodeURIComponent(shareUrl)}`,
+            color: 'hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800',
+        },
+        {
+            name: 'Facebook',
+            icon: <Globe className="size-4 text-blue-600" />,
+            url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+            color: 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950/40',
+        },
+        {
+            name: 'LinkedIn',
+            icon: <Users className="size-4 text-sky-600" />,
+            url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+            color: 'hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 dark:hover:bg-sky-950/40',
+        },
+        {
+            name: 'Telegram',
+            icon: <Send className="size-4 text-blue-500" />,
+            url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Profil Vendor Event ${vendor.name}`)}`,
+            color: 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950/40',
+        },
+    ];
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="w-[95vw] sm:max-w-md p-0 overflow-hidden rounded-2xl border-border shadow-2xl">
+                <div className="bg-gradient-to-r from-[#1B3A5C] via-[#183656] to-[#0F2035] p-5 text-white">
+                    <h3 className="font-serif text-lg font-bold text-white flex items-center gap-2">
+                        <Share2 className="size-5 text-[#D9C4A3]" />
+                        Bagikan Profil Vendor
+                    </h3>
+                    <p className="text-xs text-white/70 mt-1">
+                        Bagikan profil {vendor.name} ke rekan atau media sosial
+                    </p>
+                </div>
+
+                <div className="p-6 space-y-5 text-sm">
+                    {/* Copy Link Section */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Tautan Profil</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                readOnly
+                                value={shareUrl}
+                                className="font-mono text-xs bg-muted/40 h-9 select-all"
+                            />
+                            <Button
+                                type="button"
+                                onClick={handleCopy}
+                                className="h-9 px-3.5 bg-[#8C6538] hover:bg-[#785324] text-white shrink-0 text-xs gap-1.5 font-medium shadow-sm cursor-pointer"
+                            >
+                                {copied ? (
+                                    <>
+                                        <CheckCircle2 className="size-3.5 text-emerald-300" />
+                                        Tersalin!
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="size-3.5" />
+                                        Salin
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Social Share Grid */}
+                    <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Bagikan Langsung Ke
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {shareItems.map((item) => (
+                                <a
+                                    key={item.name}
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={cn(
+                                        'flex items-center gap-2.5 p-2.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground transition-all cursor-pointer',
+                                        item.color
+                                    )}
+                                >
+                                    {item.icon}
+                                    <span>{item.name}</span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
