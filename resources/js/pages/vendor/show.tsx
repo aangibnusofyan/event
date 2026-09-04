@@ -930,14 +930,16 @@ function EventDetailDialog({
                                 <h4 className="font-serif font-bold text-base text-foreground mb-3">Tentang Acara Ini</h4>
                                 {event.description ? (
                                     <div
-                                        className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed
-                                            [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2
-                                            [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1.5
-                                            [&_p]:mb-3
-                                            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
-                                            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
-                                            [&_blockquote]:border-l-4 [&_blockquote]:border-[#C1502E]/50 [&_blockquote]:pl-3 [&_blockquote]:italic
-                                            [&_a]:text-[#C1502E] [&_a]:underline whitespace-pre-line"
+                                        className="bg-transparent prose prose-sm dark:prose-invert max-w-none text-neutral-900 dark:text-neutral-100 leading-relaxed
+                                            [&_*]:!bg-transparent
+                                            [&_p]:!bg-transparent [&_span]:!bg-transparent [&_div]:!bg-transparent [&_h1]:!bg-transparent [&_h2]:!bg-transparent [&_h3]:!bg-transparent [&_h4]:!bg-transparent [&_h5]:!bg-transparent [&_h6]:!bg-transparent
+                                            [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-neutral-900 dark:[&_h2]:text-neutral-100
+                                            [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-neutral-900 dark:[&_h3]:text-neutral-100
+                                            [&_p]:mb-2.5
+                                            [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ul]:space-y-1
+                                            [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_ol]:space-y-1
+                                            [&_blockquote]:border-l-4 [&_blockquote]:border-neutral-300 dark:[&_blockquote]:border-neutral-700 [&_blockquote]:pl-3.5 [&_blockquote]:italic [&_blockquote]:my-3 [&_blockquote]:text-neutral-600 dark:[&_blockquote]:text-neutral-400
+                                            [&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline [&_a]:underline-offset-2"
                                         dangerouslySetInnerHTML={{ __html: formatEventDescription(event.description) }}
                                     />
                                 ) : (
@@ -1263,13 +1265,33 @@ function CTASection({
 
 function formatEventDescription(description?: string): string {
     if (!description) return '';
-    if (/<[a-z][\s\S]*>/i.test(description)) {
-        return description;
+    let html = description;
+
+    if (!/<[a-z][\s\S]*>/i.test(html)) {
+        html = html
+            .split(/\r?\n\r?\n/)
+            .map((p) => `<p>${p.replace(/\r?\n/g, '<br/>')}</p>`)
+            .join('');
     }
-    return description
-        .split(/\r?\n\r?\n/)
-        .map((p) => `<p>${p.replace(/\r?\n/g, '<br/>')}</p>`)
-        .join('');
+
+    // Strip inline background-color and background properties from style attributes
+    html = html.replace(/\bstyle=(["'])(.*?)\1/gi, (_, quote, styleContent) => {
+        const cleanedStyle = styleContent
+            .replace(/background(-color|-image)?\s*:\s*[^;]+;?/gi, '')
+            .trim();
+        return cleanedStyle ? `style=${quote}${cleanedStyle}${quote}` : '';
+    });
+
+    // Strip background classes (e.g., bg-white, bg-neutral-100) from HTML tags
+    html = html.replace(/\bclass=(["'])(.*?)\1/gi, (_, quote, classContent) => {
+        const cleanedClass = classContent
+            .replace(/\bbg-\S+/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return cleanedClass ? `class=${quote}${cleanedClass}${quote}` : '';
+    });
+
+    return html;
 }
 
 function copyTextToClipboard(text: string): boolean {

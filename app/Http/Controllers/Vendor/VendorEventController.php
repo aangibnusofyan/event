@@ -7,6 +7,7 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Category;
 use App\Models\Event;
+use App\Services\EventBannerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -17,6 +18,10 @@ use Inertia\Response;
 
 class VendorEventController extends Controller
 {
+    public function __construct(
+        public EventBannerService $bannerService,
+    ) {}
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -109,6 +114,11 @@ class VendorEventController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
+        $bannerPath = null;
+        if ($request->hasFile('banner_image')) {
+            $bannerPath = $this->bannerService->storeBanner($request->file('banner_image'), $user->id);
+        }
+
         $slugBase = Str::slug($data['title']);
         $slug = $slugBase;
         $counter = 1;
@@ -117,7 +127,7 @@ class VendorEventController extends Controller
             $counter++;
         }
 
-        DB::transaction(function () use ($user, $data, $slug) {
+        DB::transaction(function () use ($user, $data, $slug, $bannerPath, $request) {
             $event = Event::create([
                 'user_id' => $user->id,
                 'category_id' => $data['category_id'],
@@ -125,7 +135,7 @@ class VendorEventController extends Controller
                 'slug' => $slug,
                 'summary' => $data['summary'] ?? null,
                 'description' => $data['description'] ?? null,
-                'banner_image' => $data['banner_image'] ?? null,
+                'banner_image' => $bannerPath,
                 'event_type' => $data['event_type'],
                 'status' => $data['status'],
                 'start_date_time' => Carbon::parse($data['start_date_time'])->toDateTimeString(),
@@ -186,12 +196,19 @@ class VendorEventController extends Controller
             // Create Speakers
             if (! empty($data['speakers'])) {
                 foreach ($data['speakers'] as $index => $speakerData) {
+                    $avatarPath = null;
+                    if ($request->hasFile("speakers.{$index}.avatar")) {
+                        $avatarPath = $this->bannerService->storeSpeakerAvatar($request->file("speakers.{$index}.avatar"), $user->id);
+                    } elseif (! empty($speakerData['avatar']) && is_string($speakerData['avatar'])) {
+                        $avatarPath = $speakerData['avatar'];
+                    }
+
                     $event->speakers()->create([
                         'name' => $speakerData['name'],
                         'role_or_title' => $speakerData['role_or_title'] ?? null,
                         'organization' => $speakerData['organization'] ?? null,
                         'bio' => $speakerData['bio'] ?? null,
-                        'avatar' => $speakerData['avatar'] ?? null,
+                        'avatar' => $avatarPath,
                         'social_links' => $speakerData['social_links'] ?? null,
                         'order' => $index + 1,
                     ]);
@@ -201,10 +218,17 @@ class VendorEventController extends Controller
             // Create Sponsors
             if (! empty($data['sponsors'])) {
                 foreach ($data['sponsors'] as $index => $sponsorData) {
+                    $logoPath = null;
+                    if ($request->hasFile("sponsors.{$index}.logo")) {
+                        $logoPath = $this->bannerService->storeSponsorLogo($request->file("sponsors.{$index}.logo"), $user->id);
+                    } elseif (! empty($sponsorData['logo']) && is_string($sponsorData['logo'])) {
+                        $logoPath = $sponsorData['logo'];
+                    }
+
                     $event->sponsors()->create([
                         'name' => $sponsorData['name'],
                         'tier' => $sponsorData['tier'],
-                        'logo' => $sponsorData['logo'] ?? null,
+                        'logo' => $logoPath,
                         'website_url' => $sponsorData['website_url'] ?? null,
                         'order' => $index + 1,
                     ]);
@@ -257,15 +281,25 @@ class VendorEventController extends Controller
 
     public function update(UpdateEventRequest $request, Event $event): RedirectResponse
     {
+        $user = $request->user();
         $data = $request->validated();
 
-        DB::transaction(function () use ($event, $data) {
+        $bannerPath = $event->banner_image;
+        if ($request->hasFile('banner_image')) {
+            $bannerPath = $this->bannerService->storeBanner($request->file('banner_image'), $user->id);
+            $this->bannerService->deleteBanner($event->banner_image);
+        } elseif (array_key_exists('banner_image', $data) && empty($data['banner_image'])) {
+            $this->bannerService->deleteBanner($event->banner_image);
+            $bannerPath = null;
+        }
+
+        DB::transaction(function () use ($event, $data, $bannerPath, $user, $request) {
             $event->update([
                 'category_id' => $data['category_id'],
                 'title' => $data['title'],
                 'summary' => $data['summary'] ?? null,
                 'description' => $data['description'] ?? null,
-                'banner_image' => $data['banner_image'] ?? null,
+                'banner_image' => $bannerPath,
                 'event_type' => $data['event_type'],
                 'status' => $data['status'],
                 'start_date_time' => Carbon::parse($data['start_date_time'])->toDateTimeString(),
@@ -337,12 +371,19 @@ class VendorEventController extends Controller
             $event->speakers()->delete();
             if (! empty($data['speakers'])) {
                 foreach ($data['speakers'] as $index => $speakerData) {
+                    $avatarPath = null;
+                    if ($request->hasFile("speakers.{$index}.avatar")) {
+                        $avatarPath = $this->bannerService->storeSpeakerAvatar($request->file("speakers.{$index}.avatar"), $user->id);
+                    } elseif (! empty($speakerData['avatar']) && is_string($speakerData['avatar'])) {
+                        $avatarPath = $speakerData['avatar'];
+                    }
+
                     $event->speakers()->create([
                         'name' => $speakerData['name'],
                         'role_or_title' => $speakerData['role_or_title'] ?? null,
                         'organization' => $speakerData['organization'] ?? null,
                         'bio' => $speakerData['bio'] ?? null,
-                        'avatar' => $speakerData['avatar'] ?? null,
+                        'avatar' => $avatarPath,
                         'social_links' => $speakerData['social_links'] ?? null,
                         'order' => $index + 1,
                     ]);
@@ -353,10 +394,17 @@ class VendorEventController extends Controller
             $event->sponsors()->delete();
             if (! empty($data['sponsors'])) {
                 foreach ($data['sponsors'] as $index => $sponsorData) {
+                    $logoPath = null;
+                    if ($request->hasFile("sponsors.{$index}.logo")) {
+                        $logoPath = $this->bannerService->storeSponsorLogo($request->file("sponsors.{$index}.logo"), $user->id);
+                    } elseif (! empty($sponsorData['logo']) && is_string($sponsorData['logo'])) {
+                        $logoPath = $sponsorData['logo'];
+                    }
+
                     $event->sponsors()->create([
                         'name' => $sponsorData['name'],
                         'tier' => $sponsorData['tier'],
-                        'logo' => $sponsorData['logo'] ?? null,
+                        'logo' => $logoPath,
                         'website_url' => $sponsorData['website_url'] ?? null,
                         'order' => $index + 1,
                     ]);

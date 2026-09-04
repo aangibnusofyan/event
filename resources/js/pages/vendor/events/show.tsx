@@ -246,7 +246,7 @@ export default function VendorEventShow({ event }: Props) {
                                                 className="flex items-start gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800"
                                             >
                                                 <div className="size-12 shrink-0 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
-                                                    {spk.avatar ? (
+                                                    {spk.avatar && typeof spk.avatar === 'string' ? (
                                                         <img src={spk.avatar} alt={spk.name} className="size-full object-cover" />
                                                     ) : (
                                                         <div className="flex size-full items-center justify-center font-bold text-neutral-400">
@@ -288,7 +288,7 @@ export default function VendorEventShow({ event }: Props) {
                                                 key={sps.id ?? idx}
                                                 className="flex items-center gap-2.5 rounded-lg border border-neutral-200 px-3.5 py-2 dark:border-neutral-800"
                                             >
-                                                {sps.logo && (
+                                                {sps.logo && typeof sps.logo === 'string' && (
                                                     <img src={sps.logo} alt={sps.name} className="size-6 object-contain" />
                                                 )}
                                                 <div>

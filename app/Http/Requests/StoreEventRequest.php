@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Validator;
 
 class StoreEventRequest extends FormRequest
 {
@@ -22,7 +24,7 @@ class StoreEventRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'summary' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
-            'banner_image' => ['nullable', 'string'],
+            'banner_image' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:10240'],
             'event_type' => ['required', 'in:online,offline,hybrid'],
             'status' => ['required', 'in:draft,published,ended,cancelled'],
             'start_date_time' => ['required', 'date'],
@@ -71,15 +73,73 @@ class StoreEventRequest extends FormRequest
             'speakers.*.role_or_title' => ['nullable', 'string', 'max:255'],
             'speakers.*.organization' => ['nullable', 'string', 'max:255'],
             'speakers.*.bio' => ['nullable', 'string'],
-            'speakers.*.avatar' => ['nullable', 'string'],
+            'speakers.*.avatar' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    if ($value instanceof UploadedFile) {
+                        $validator = Validator::make(
+                            ['file' => $value],
+                            ['file' => ['image', 'mimes:jpeg,png,webp', 'max:10240']],
+                            [
+                                'file.image' => 'Foto avatar pembicara harus berupa gambar.',
+                                'file.mimes' => 'Format foto avatar harus berupa JPG, PNG, atau WEBP.',
+                                'file.max' => 'Ukuran foto avatar terlalu besar. Maksimal 10MB.',
+                            ]
+                        );
+                        if ($validator->fails()) {
+                            $fail($validator->errors()->first('file'));
+                        }
+                    } elseif (! is_string($value)) {
+                        $fail('Foto avatar tidak valid.');
+                    }
+                },
+            ],
             'speakers.*.social_links' => ['nullable', 'array'],
 
             // Sponsors
             'sponsors' => ['nullable', 'array'],
             'sponsors.*.name' => ['required_with:sponsors', 'string', 'max:255'],
             'sponsors.*.tier' => ['required_with:sponsors', 'in:platinum,gold,silver,bronze,media_partner,community_partner'],
-            'sponsors.*.logo' => ['nullable', 'string'],
+            'sponsors.*.logo' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    if ($value instanceof UploadedFile) {
+                        $validator = Validator::make(
+                            ['file' => $value],
+                            ['file' => ['image', 'mimes:jpeg,png,webp', 'max:10240']],
+                            [
+                                'file.image' => 'Logo sponsor harus berupa gambar.',
+                                'file.mimes' => 'Format logo sponsor harus berupa JPG, PNG, atau WEBP.',
+                                'file.max' => 'Ukuran logo sponsor terlalu besar. Maksimal 10MB.',
+                            ]
+                        );
+                        if ($validator->fails()) {
+                            $fail($validator->errors()->first('file'));
+                        }
+                    } elseif (! is_string($value)) {
+                        $fail('Logo sponsor tidak valid.');
+                    }
+                },
+            ],
             'sponsors.*.website_url' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'banner_image.image' => 'File banner harus berupa gambar.',
+            'banner_image.mimes' => 'Format gambar harus berupa JPG, PNG, atau WEBP.',
+            'banner_image.max' => 'Ukuran foto terlalu besar. Maksimal 10MB.',
+            'speakers.*.avatar.image' => 'Foto avatar pembicara harus berupa gambar.',
+            'speakers.*.avatar.mimes' => 'Format foto avatar harus berupa JPG, PNG, atau WEBP.',
+            'speakers.*.avatar.max' => 'Ukuran foto avatar terlalu besar. Maksimal 10MB.',
+            'sponsors.*.logo.image' => 'Logo sponsor harus berupa gambar.',
+            'sponsors.*.logo.mimes' => 'Format logo sponsor harus berupa JPG, PNG, atau WEBP.',
+            'sponsors.*.logo.max' => 'Ukuran logo sponsor terlalu besar. Maksimal 10MB.',
         ];
     }
 }

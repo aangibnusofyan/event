@@ -43,7 +43,7 @@ export interface EventSpeaker {
     role_or_title?: string | null;
     organization?: string | null;
     bio?: string | null;
-    avatar?: string | null;
+    avatar?: string | File | null;
     social_links?: {
         linkedin?: string;
         twitter?: string;
@@ -57,7 +57,7 @@ export interface EventSponsor {
     id?: number;
     name: string;
     tier: SponsorTier;
-    logo?: string | null;
+    logo?: string | File | null;
     website_url?: string | null;
     order?: number;
 }

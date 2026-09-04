@@ -3,7 +3,12 @@
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 beforeEach(function () {
     $this->vendor = User::factory()->vendor()->create();
@@ -146,6 +151,109 @@ it('allows vendor to create a complete hybrid event with tickets, agendas, speak
         ->and($event->sponsors)->toHaveCount(1);
 });
 
+it('processes, resizes to 16:9, compresses, and stores banner image in isolated vendor folder', function () {
+    Storage::fake('public');
+
+    // Create a 2000x1000 test image (non 16:9 to verify auto-fit)
+    $bannerFile = UploadedFile::fake()->image('banner_poster.jpg', 2000, 1000)->size(3000);
+
+    $payload = [
+        'title' => 'Art & Design Exhibition 2026',
+        'category_id' => $this->category->id,
+        'summary' => 'Pameran seni tahunan',
+        'event_type' => 'offline',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(5)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(5)->addHours(4)->format('Y-m-d H:i:s'),
+        'venue_name' => 'Gallery Hall',
+        'city' => 'Bandung',
+        'banner_image' => $bannerFile,
+        'tickets' => [
+            [
+                'name' => 'General Admission',
+                'type' => 'paid',
+                'tier' => 'regular',
+                'price' => 50000,
+                'quantity' => 150,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)->post('/vendor/events', $payload);
+    $response->assertRedirect('/vendor/events');
+
+    $event = Event::where('title', 'Art & Design Exhibition 2026')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->banner_image)->not->toBeNull()
+        ->and($event->banner_image)->toStartWith('/storage/banners/vendor_'.$this->vendor->id.'/');
+
+    $storedRelativePath = Str::after($event->banner_image, '/storage/');
+    Storage::disk('public')->assertExists($storedRelativePath);
+
+    // Verify dimensions: 1280x720 (16:9)
+    $manager = new ImageManager(new Driver);
+    $fullPath = Storage::disk('public')->path($storedRelativePath);
+    $processedImage = $manager->decodePath($fullPath);
+    expect($processedImage->width())->toBe(1280)
+        ->and($processedImage->height())->toBe(720);
+});
+
+it('rejects banner image larger than 10MB', function () {
+    Storage::fake('public');
+
+    // 11MB file (larger than 10240 KB limit)
+    $oversizedFile = UploadedFile::fake()->image('huge_banner.jpg', 1920, 1080)->size(11264);
+
+    $payload = [
+        'title' => 'Oversized Banner Event',
+        'category_id' => $this->category->id,
+        'event_type' => 'offline',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(2)->addHours(2)->format('Y-m-d H:i:s'),
+        'banner_image' => $oversizedFile,
+        'tickets' => [
+            [
+                'name' => 'Ticket A',
+                'type' => 'free',
+                'tier' => 'regular',
+                'quantity' => 50,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)->post('/vendor/events', $payload);
+    $response->assertSessionHasErrors(['banner_image']);
+    expect(session('errors')->first('banner_image'))->toBe('Ukuran foto terlalu besar. Maksimal 10MB.');
+});
+
+it('rejects banner image with non-image mime type', function () {
+    Storage::fake('public');
+
+    $pdfFile = UploadedFile::fake()->create('document.pdf', 500, 'application/pdf');
+
+    $payload = [
+        'title' => 'Invalid Mime Event',
+        'category_id' => $this->category->id,
+        'event_type' => 'offline',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(2)->addHours(2)->format('Y-m-d H:i:s'),
+        'banner_image' => $pdfFile,
+        'tickets' => [
+            [
+                'name' => 'Ticket A',
+                'type' => 'free',
+                'tier' => 'regular',
+                'quantity' => 50,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)->post('/vendor/events', $payload);
+    $response->assertSessionHasErrors(['banner_image']);
+});
+
 it('allows vendor to view their event detail', function () {
     $event = Event::factory()->create([
         'user_id' => $this->vendor->id,
@@ -209,6 +317,56 @@ it('allows vendor to update an event', function () {
         'title' => 'Updated Event Title',
         'event_type' => 'online',
     ]);
+});
+
+it('replaces old banner when updating event with a new banner image', function () {
+    Storage::fake('public');
+
+    // Seed old banner
+    $oldBannerPath = 'banners/vendor_'.$this->vendor->id.'/old_banner.webp';
+    Storage::disk('public')->put($oldBannerPath, 'fake-image-content');
+
+    $event = Event::factory()->create([
+        'user_id' => $this->vendor->id,
+        'category_id' => $this->category->id,
+        'title' => 'Event With Old Banner',
+        'banner_image' => '/storage/'.$oldBannerPath,
+    ]);
+
+    $newBanner = UploadedFile::fake()->image('new_banner.png', 1600, 900);
+
+    $payload = [
+        'title' => 'Event With Replaced Banner',
+        'category_id' => $this->category->id,
+        'event_type' => 'online',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(5)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(5)->addHours(4)->format('Y-m-d H:i:s'),
+        'banner_image' => $newBanner,
+        'tickets' => [
+            [
+                'name' => 'Free Pass',
+                'type' => 'free',
+                'tier' => 'regular',
+                'price' => 0,
+                'quantity' => 50,
+            ],
+        ],
+    ];
+
+    $this->actingAs($this->vendor)
+        ->put("/vendor/events/{$event->id}", $payload)
+        ->assertRedirect('/vendor/events');
+
+    $event->refresh();
+    expect($event->banner_image)->not->toBe('/storage/'.$oldBannerPath)
+        ->and($event->banner_image)->toStartWith('/storage/banners/vendor_'.$this->vendor->id.'/');
+
+    // Old banner deleted
+    Storage::disk('public')->assertMissing($oldBannerPath);
+
+    // New banner exists
+    Storage::disk('public')->assertExists(Str::after($event->banner_image, '/storage/'));
 });
 
 it('allows vendor to update an event with ISO 8601 ticket sale dates', function () {
@@ -468,4 +626,187 @@ it('correctly filters all combinations of status and type', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->has('events.data', 5)
         );
+});
+
+it('allows creating an event without latitude and longitude', function () {
+    $payload = [
+        'title' => 'No Lat Long Event',
+        'category_id' => $this->category->id,
+        'event_type' => 'offline',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(2)->addHours(3)->format('Y-m-d H:i:s'),
+        'venue_name' => 'City Convention Center',
+        'city' => 'Jakarta Selatan',
+        'province' => 'DKI Jakarta',
+        'address' => 'Jl. Gatot Subroto No. 123',
+        'google_maps_url' => 'https://maps.google.com/?q=jakarta',
+        'latitude' => null,
+        'longitude' => null,
+        'tickets' => [
+            [
+                'name' => 'Regular Ticket',
+                'type' => 'paid',
+                'tier' => 'regular',
+                'price' => 50000,
+                'quantity' => 100,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)
+        ->post('/vendor/events', $payload);
+
+    $response->assertRedirect('/vendor/events');
+
+    $this->assertDatabaseHas('events', [
+        'user_id' => $this->vendor->id,
+        'title' => 'No Lat Long Event',
+        'latitude' => null,
+        'longitude' => null,
+        'venue_name' => 'City Convention Center',
+    ]);
+});
+
+it('uploads, crops square 1:1, and compresses speaker avatar', function () {
+    Storage::fake('public');
+
+    // Create a 1200x800 non-square image
+    $avatarFile = UploadedFile::fake()->image('speaker_photo.jpg', 1200, 800)->size(1500);
+
+    $payload = [
+        'title' => 'Event With Uploaded Speaker',
+        'category_id' => $this->category->id,
+        'event_type' => 'online',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(3)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(3)->addHours(2)->format('Y-m-d H:i:s'),
+        'online_platform' => 'Zoom Meetings',
+        'streaming_link' => 'https://zoom.us/j/999',
+        'tickets' => [
+            [
+                'name' => 'Online Pass',
+                'type' => 'free',
+                'tier' => 'regular',
+                'quantity' => 50,
+            ],
+        ],
+        'speakers' => [
+            [
+                'name' => 'Prof. Anindya',
+                'role_or_title' => 'AI Researcher',
+                'organization' => 'Tech University',
+                'bio' => 'Peneliti AI terkemuka',
+                'avatar' => $avatarFile,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)
+        ->post('/vendor/events', $payload);
+
+    $response->assertRedirect('/vendor/events');
+
+    $event = Event::where('title', 'Event With Uploaded Speaker')->first();
+    expect($event->speakers)->toHaveCount(1);
+
+    $speaker = $event->speakers->first();
+    expect($speaker->avatar)->not->toBeNull()
+        ->and($speaker->avatar)->toStartWith('/storage/speakers/vendor_'.$this->vendor->id.'/');
+
+    $storedPath = Str::after($speaker->avatar, '/storage/');
+    Storage::disk('public')->assertExists($storedPath);
+
+    // Verify 1:1 square crop: 500x500
+    $manager = new ImageManager(new Driver);
+    $img = $manager->decodePath(Storage::disk('public')->path($storedPath));
+    expect($img->width())->toBe(500)
+        ->and($img->height())->toBe(500);
+});
+
+it('uploads, proportionally resizes (max 800px), and compresses sponsor logo', function () {
+    Storage::fake('public');
+
+    // Create a 1600x900 image (wider than 800px)
+    $logoFile = UploadedFile::fake()->image('sponsor_logo.png', 1600, 900)->size(2000);
+
+    $payload = [
+        'title' => 'Event With Uploaded Sponsor',
+        'category_id' => $this->category->id,
+        'event_type' => 'online',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(3)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(3)->addHours(2)->format('Y-m-d H:i:s'),
+        'tickets' => [
+            [
+                'name' => 'Pass',
+                'type' => 'free',
+                'tier' => 'regular',
+                'quantity' => 50,
+            ],
+        ],
+        'sponsors' => [
+            [
+                'name' => 'Tech Corp Global',
+                'tier' => 'gold',
+                'website_url' => 'https://techcorp.com',
+                'logo' => $logoFile,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)
+        ->post('/vendor/events', $payload);
+
+    $response->assertRedirect('/vendor/events');
+
+    $event = Event::where('title', 'Event With Uploaded Sponsor')->first();
+    expect($event->sponsors)->toHaveCount(1);
+
+    $sponsor = $event->sponsors->first();
+    expect($sponsor->logo)->not->toBeNull()
+        ->and($sponsor->logo)->toStartWith('/storage/sponsors/vendor_'.$this->vendor->id.'/');
+
+    $storedPath = Str::after($sponsor->logo, '/storage/');
+    Storage::disk('public')->assertExists($storedPath);
+
+    // Verify proportional scaling with max width 800px (1600x900 -> 800x450)
+    $manager = new ImageManager(new Driver);
+    $img = $manager->decodePath(Storage::disk('public')->path($storedPath));
+    expect($img->width())->toBe(800)
+        ->and($img->height())->toBe(450);
+});
+
+it('rejects speaker avatar or sponsor logo larger than 10MB', function () {
+    Storage::fake('public');
+
+    $oversizedFile = UploadedFile::fake()->image('huge.jpg', 1200, 800)->size(11000);
+
+    $payload = [
+        'title' => 'Oversized Media Event',
+        'category_id' => $this->category->id,
+        'event_type' => 'online',
+        'status' => 'published',
+        'start_date_time' => now()->addDays(3)->format('Y-m-d H:i:s'),
+        'end_date_time' => now()->addDays(3)->addHours(2)->format('Y-m-d H:i:s'),
+        'tickets' => [
+            [
+                'name' => 'Pass',
+                'type' => 'free',
+                'tier' => 'regular',
+                'quantity' => 50,
+            ],
+        ],
+        'speakers' => [
+            [
+                'name' => 'Speaker A',
+                'avatar' => $oversizedFile,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($this->vendor)
+        ->post('/vendor/events', $payload);
+
+    $response->assertSessionHasErrors(['speakers.0.avatar']);
 });
