@@ -39,7 +39,7 @@ export function Navbar({ hideNavItems = false }: { hideNavItems?: boolean } = {}
                     : 'bg-transparent',
             )}
         >
-            <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+            <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 md:px-8 py-3.5 sm:py-4">
                 {/* Logo */}
                 <a href="/" className="flex items-center gap-2.5">
                     <div className="flex size-9 items-center justify-center rounded-xl bg-[#1B3A5C]">

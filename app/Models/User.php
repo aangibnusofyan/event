@@ -68,6 +68,31 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'avatar_url',
+    ];
+
+    /**
+     * Get the user's avatar URL.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar) {
+            return null;
+        }
+
+        if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://') || str_starts_with($this->avatar, '/')) {
+            return $this->avatar;
+        }
+
+        return '/storage/'.$this->avatar;
+    }
+
+    /**
      * Determine if the user is a vendor.
      */
     public function isVendor(): bool

@@ -215,7 +215,7 @@ export default function VendorShow({ vendor, events }: Props) {
 
             <Navbar hideNavItems />
 
-            <main>
+            <main className="w-full max-w-full overflow-x-hidden min-h-screen">
                 <HeroSection
                     vendor={vendor}
                     onContactClick={() => setIsContactOpen(true)}
@@ -294,61 +294,61 @@ function HeroSection({
         .toUpperCase();
 
     return (
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#1B3A5C] via-[#152E4A] to-[#0F2035] pt-28 pb-20 lg:pt-36 lg:pb-28">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#1B3A5C] via-[#152E4A] to-[#0F2035] pt-24 pb-16 sm:pt-28 sm:pb-20 lg:pt-36 lg:pb-28">
             {/* Decorative blobs */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div
-                    className="absolute -top-40 -right-40 size-[500px] rounded-full bg-[#C1502E]/10 blur-[120px]"
+                    className="absolute -top-40 -right-40 size-[350px] sm:size-[500px] rounded-full bg-[#C1502E]/10 blur-[100px] sm:blur-[120px]"
                     style={{ animation: 'float 8s ease-in-out infinite' }}
                 />
                 <div
-                    className="absolute top-1/3 -left-20 size-[350px] rounded-full bg-[#D9C4A3]/8 blur-[100px]"
+                    className="absolute top-1/3 -left-20 size-[250px] sm:size-[350px] rounded-full bg-[#D9C4A3]/8 blur-[80px] sm:blur-[100px]"
                     style={{
                         animation: 'float-reverse 10s ease-in-out infinite',
                     }}
                 />
             </div>
 
-            <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
                 <div className="flex flex-col items-center text-center lg:flex-row lg:items-end lg:gap-8 lg:text-left">
                     {/* Avatar */}
-                    <Avatar className="ring-background/20 size-28 ring-4 lg:size-36">
+                    <Avatar className="ring-background/20 size-24 sm:size-28 lg:size-36 ring-4 shrink-0">
                         {vendor.avatar && <AvatarImage src={vendor.avatar} alt={vendor.name} className="object-cover" />}
-                        <AvatarFallback className="bg-[#C1502E] font-serif text-3xl font-bold text-white lg:text-4xl">
+                        <AvatarFallback className="bg-[#C1502E] font-serif text-2xl sm:text-3xl font-bold text-white lg:text-4xl">
                             {initials}
                         </AvatarFallback>
                     </Avatar>
 
                     {/* Info */}
-                    <div className="mt-6 flex-1 lg:mt-0">
-                        <h1 className="font-serif text-3xl font-bold text-white lg:text-5xl">
+                    <div className="mt-5 sm:mt-6 flex-1 lg:mt-0 w-full min-w-0">
+                        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-white lg:text-5xl break-words">
                             {vendor.name}
                         </h1>
-                        <p className="mt-2 text-lg text-white/50">
+                        <p className="mt-1.5 sm:mt-2 text-base sm:text-lg text-white/60 truncate">
                             @{vendor.username}
                         </p>
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-white/60 lg:justify-start">
+                        <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-white/70 lg:justify-start">
                             <span className="flex items-center gap-1.5">
-                                <MapPin className="size-4" />
-                                {vendor.location}
+                                <MapPin className="size-4 shrink-0" />
+                                <span className="truncate">{vendor.location}</span>
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Calendar className="size-4" />
-                                Bergabung {vendor.joinedAt}
+                                <Calendar className="size-4 shrink-0" />
+                                <span>Bergabung {vendor.joinedAt}</span>
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Star className="size-4 text-[#D9C4A3]" />
-                                {vendor.stats.rating} / 5.0
+                                <Star className="size-4 text-[#D9C4A3] shrink-0" />
+                                <span>{vendor.stats.rating} / 5.0</span>
                             </span>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="mt-6 flex gap-3 lg:mt-0">
+                    <div className="mt-6 flex w-full flex-col sm:flex-row sm:w-auto gap-3 lg:mt-0 shrink-0">
                         <Button
                             type="button"
                             onClick={onContactClick}
-                            className="bg-[#C1502E] px-6 text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2"
+                            className="bg-[#C1502E] px-6 text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2 w-full sm:w-auto justify-center"
                         >
                             <MessageCircle className="size-4" />
                             Hubungi
@@ -356,7 +356,7 @@ function HeroSection({
                         <Button
                             type="button"
                             onClick={onShareClick}
-                            className="bg-[#8C6538] text-white hover:bg-[#785324] shadow-md border-0 px-6 font-medium gap-2 transition-colors cursor-pointer"
+                            className="bg-[#8C6538] text-white hover:bg-[#785324] shadow-md border-0 px-6 font-medium gap-2 transition-colors cursor-pointer w-full sm:w-auto justify-center"
                         >
                             <Share2 className="size-4" />
                             <span>Bagikan</span>
@@ -396,12 +396,12 @@ interface StatItemProps {
 
 function StatItem({ value, label, icon }: StatItemProps) {
     return (
-        <div className="flex flex-col items-center gap-2 px-6 py-4">
-            <div className="text-primary/80 mb-1">{icon}</div>
-            <span className="text-foreground font-serif text-2xl font-bold lg:text-3xl">
+        <div className="flex flex-col items-center text-center gap-1.5 sm:gap-2 px-2 py-3 sm:px-6 sm:py-4 min-w-0">
+            <div className="text-primary/80 mb-0.5 sm:mb-1">{icon}</div>
+            <span className="text-foreground font-serif text-lg sm:text-2xl font-bold lg:text-3xl truncate max-w-full">
                 {value}
             </span>
-            <span className="text-muted-foreground text-sm">{label}</span>
+            <span className="text-muted-foreground text-xs sm:text-sm truncate max-w-full">{label}</span>
         </div>
     );
 }
@@ -418,20 +418,20 @@ function StatsSection({
             <div
                 ref={ref}
                 className={cn(
-                    'mx-auto max-w-4xl px-6 transition-all duration-700 lg:px-8',
+                    'mx-auto max-w-4xl px-4 sm:px-6 md:px-8 transition-all duration-700',
                     isVisible
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-8 opacity-0',
                 )}
             >
-                <Card className="border-border/50 shadow-lg">
+                <Card className="border-border/50 shadow-lg overflow-hidden">
                     <CardContent className="p-0">
                         <div className="divide-border grid grid-cols-3 divide-x">
                             <StatItem
                                 value={stats.totalEvents.toString()}
                                 label="Total Event"
                                 icon={
-                                    <Ticket className="size-5" />
+                                    <Ticket className="size-4 sm:size-5" />
                                 }
                             />
                             <StatItem
@@ -440,14 +440,14 @@ function StatsSection({
                                 )}
                                 label="Total Peserta"
                                 icon={
-                                    <Users className="size-5" />
+                                    <Users className="size-4 sm:size-5" />
                                 }
                             />
                             <StatItem
                                 value={`${stats.rating}/5`}
                                 label="Rating"
                                 icon={
-                                    <Star className="size-5" />
+                                    <Star className="size-4 sm:size-5" />
                                 }
                             />
                         </div>
@@ -466,31 +466,30 @@ function BioSection({ vendor }: { vendor: VendorData }) {
     const { ref, isVisible } = useScrollAnimation();
 
     return (
-        <section className="bg-background py-12 lg:py-16">
+        <section className="bg-background py-10 sm:py-12 lg:py-16">
             <div
                 ref={ref}
                 className={cn(
-                    'mx-auto max-w-7xl px-6 transition-all duration-700 lg:px-8',
+                    'mx-auto max-w-7xl px-4 sm:px-6 md:px-8 transition-all duration-700',
                     isVisible
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-8 opacity-0',
                 )}
             >
-                <div className="grid gap-8 lg:grid-cols-3">
+                <div className="grid gap-6 sm:gap-8 lg:grid-cols-3">
                     {/* Bio */}
-                    <div className="lg:col-span-2">
-                        <h2 className="text-foreground mb-4 font-serif text-2xl font-bold">
+                    <div className="lg:col-span-2 min-w-0">
+                        <h2 className="text-foreground mb-3 sm:mb-4 font-serif text-xl sm:text-2xl font-bold">
                             Tentang
                         </h2>
-                        <p className="text-muted-foreground leading-relaxed">
+                        <p className="text-muted-foreground leading-relaxed text-sm sm:text-base break-words">
                             {vendor.bio}
                         </p>
                     </div>
 
-                    {/* Social & Info Card */}
-                    <div>
-                        <Card className="border-border/50">
-                            <CardContent className="space-y-4 p-6">
+                    <div className="min-w-0">
+                        <Card className="border-border/50 overflow-hidden">
+                            <CardContent className="space-y-4 p-4 sm:p-6">
                                 {(vendor.socialLinks?.instagram || vendor.socialLinks?.x || vendor.socialLinks?.tiktok || vendor.socialLinks?.youtube || vendor.socialLinks?.website) && (
                                     <>
                                         <h3 className="text-foreground text-sm font-semibold uppercase tracking-wider">
@@ -601,7 +600,7 @@ function EventCard({
         <div
             ref={ref}
             className={cn(
-                'transition-all duration-700',
+                'w-full max-w-full min-w-0 transition-all duration-700',
                 isVisible
                     ? 'translate-y-0 opacity-100'
                     : 'translate-y-12 opacity-0',
@@ -611,17 +610,17 @@ function EventCard({
             <Card
                 onClick={() => onSelect(event)}
                 className={cn(
-                    'group border-border/50 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer',
+                    'group border-border/50 overflow-hidden w-full max-w-full min-w-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer flex flex-col',
                     muted && 'opacity-75 hover:opacity-100',
                 )}
             >
                 {/* Event Image / Placeholder */}
-                <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#1B3A5C]/20 via-[#152E4A]/10 to-[#D9C4A3]/20">
+                <div className="relative aspect-[16/9] w-full max-w-full overflow-hidden bg-gradient-to-br from-[#1B3A5C]/20 via-[#152E4A]/10 to-[#D9C4A3]/20 shrink-0">
                     {event.image ? (
                         <img
                             src={event.image}
                             alt={event.title}
-                            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            className="size-full w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105"
                         />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -629,57 +628,63 @@ function EventCard({
                         </div>
                     )}
                     {/* Category badge */}
-                    <Badge className="absolute top-3 left-3 bg-[#1B3A5C]/90 text-white backdrop-blur-sm">
+                    <Badge className="absolute top-3 left-3 bg-[#1B3A5C]/90 text-white backdrop-blur-sm text-xs">
                         {event.category}
                     </Badge>
                     {/* Status badge */}
                     {event.status === 'past' && (
                         <Badge
                             variant="secondary"
-                            className="absolute top-3 right-3 bg-black/50 text-white backdrop-blur-sm"
+                            className="absolute top-3 right-3 bg-black/60 text-white backdrop-blur-sm text-xs"
                         >
                             Selesai
                         </Badge>
                     )}
                 </div>
 
-                <CardContent className="space-y-3 p-5">
-                    <h3 className="text-foreground line-clamp-2 font-serif text-lg font-bold leading-tight transition-colors group-hover:text-[#C1502E]">
-                        {event.title}
-                    </h3>
+                <CardContent className="space-y-3 p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <h3 className="text-foreground line-clamp-2 font-serif text-base sm:text-lg font-bold leading-tight transition-colors group-hover:text-[#C1502E]">
+                            {event.title}
+                        </h3>
 
-                    <div className="text-muted-foreground space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="size-3.5 shrink-0" />
-                            <span>{event.date}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Clock className="size-3.5 shrink-0" />
-                            <span>{event.time}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <MapPin className="size-3.5 shrink-0" />
-                            <span className="truncate">{event.location}</span>
+                        <div className="text-muted-foreground space-y-2 text-xs sm:text-sm">
+                            <div className="flex items-center gap-2">
+                                <Calendar className="size-3.5 shrink-0" />
+                                <span className="truncate">{event.date}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Clock className="size-3.5 shrink-0" />
+                                <span className="truncate">{event.time}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <MapPin className="size-3.5 shrink-0" />
+                                <span className="truncate">{event.location}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <Separator />
+                    <div className="pt-2">
+                        <Separator className="mb-3" />
 
-                    <div className="flex items-center justify-between">
-                        <span className="font-serif text-lg font-bold text-[#C1502E]">
-                            {event.price}
-                        </span>
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect(event);
-                            }}
-                            className="bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90"
-                        >
-                            Lihat Detail
-                        </Button>
+                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-serif text-base sm:text-lg font-bold text-[#C1502E] leading-none">
+                                    {event.price}
+                                </span>
+                            </div>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelect(event);
+                                }}
+                                className="w-full sm:w-auto bg-[#1B3A5C] text-white hover:bg-[#1B3A5C]/90 text-xs sm:text-sm font-medium shrink-0 cursor-pointer"
+                            >
+                                Lihat Detail
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -703,13 +708,13 @@ function EventsSection({
     const { ref, isVisible } = useScrollAnimation();
 
     return (
-        <section className="bg-background py-12 lg:py-16">
-            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <section className="bg-background py-10 sm:py-12 lg:py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
                 {/* Section heading */}
                 <div
                     ref={ref}
                     className={cn(
-                        'mb-10 transition-all duration-700',
+                        'mb-8 sm:mb-10 transition-all duration-700',
                         isVisible
                             ? 'translate-y-0 opacity-100'
                             : 'translate-y-8 opacity-0',
@@ -718,11 +723,11 @@ function EventsSection({
                     <h2 className="text-foreground font-serif text-2xl font-bold tracking-tight lg:text-3xl">
                         {title}
                     </h2>
-                    <p className="text-muted-foreground mt-2">{subtitle}</p>
+                    <p className="text-muted-foreground mt-2 text-sm sm:text-base">{subtitle}</p>
                 </div>
 
                 {/* Grid */}
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {events.map((event, idx) => (
                         <EventCard
                             key={event.id}
@@ -1213,35 +1218,35 @@ function CTASection({
     const { ref, isVisible } = useScrollAnimation();
 
     return (
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#1B3A5C] via-[#152E4A] to-[#0F2035] py-20 lg:py-28">
-            {/* Decorative blobs */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#1B3A5C] via-[#152E4A] to-[#0F2035] py-14 sm:py-20 lg:py-28">
+            {/* Background elements */}
             <div className="pointer-events-none absolute inset-0">
-                <div className="absolute top-0 right-1/4 size-64 rounded-full bg-[#C1502E]/10 blur-[80px]" />
-                <div className="absolute bottom-0 left-1/4 size-48 rounded-full bg-[#D9C4A3]/10 blur-[60px]" />
+                <div className="absolute top-0 right-1/4 size-48 sm:size-64 rounded-full bg-[#C1502E]/10 blur-[80px]" />
+                <div className="absolute bottom-0 left-1/4 size-36 sm:size-48 rounded-full bg-[#D9C4A3]/10 blur-[60px]" />
             </div>
 
             <div
                 ref={ref}
                 className={cn(
-                    'relative mx-auto max-w-3xl px-6 text-center transition-all duration-700 lg:px-8',
+                    'relative mx-auto max-w-3xl px-4 sm:px-6 md:px-8 text-center transition-all duration-700',
                     isVisible
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-8 opacity-0',
                 )}
             >
-                <h2 className="mb-6 font-serif text-3xl font-bold text-white lg:text-4xl">
+                <h2 className="mb-4 sm:mb-6 font-serif text-2xl sm:text-3xl font-bold text-white lg:text-4xl break-words">
                     Tertarik dengan event dari {vendor.name}?
                 </h2>
-                <p className="mb-10 text-lg text-white/60">
+                <p className="mb-8 sm:mb-10 text-sm sm:text-lg text-white/60">
                     Hubungi vendor ini untuk informasi lebih lanjut atau lihat
                     event-event yang tersedia.
                 </p>
-                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 sm:flex-row w-full">
                     <Button
                         type="button"
                         size="lg"
                         onClick={onContactClick}
-                        className="bg-[#C1502E] px-10 text-base text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2"
+                        className="bg-[#C1502E] px-8 sm:px-10 text-sm sm:text-base text-white shadow-lg shadow-[#C1502E]/25 hover:bg-[#C1502E]/90 cursor-pointer gap-2 w-full sm:w-auto justify-center"
                     >
                         <MessageCircle className="size-4" />
                         Hubungi Vendor
